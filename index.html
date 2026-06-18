@@ -1,0 +1,2885 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#fb923c" />
+<title>Rohkeusliiga</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%23fb923c'/><text x='50%25' y='58%25' font-size='110' text-anchor='middle' dominant-baseline='middle'>🦁</text></svg>" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%23fb923c'/><text x='50%25' y='62%25' font-size='40' text-anchor='middle' dominant-baseline='middle'>🦁</text></svg>" />
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  html, body { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; }
+  button { -webkit-user-select: none; user-select: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+// ============================================================
+// VAKIOT
+// ============================================================
+const MOOD_REPLIES = {
+  "😄": { text: "Hienoa fiilistä. Mitä päivästä jäi mieleen?", highlight: "Hienoa fiilistä", tone: "amber", icon: "🌟" },
+  "🙂": { text: "Ihan ok on ihan ok. Katsotaan yksi hetki päivästä.", highlight: "Ihan ok on ihan ok", tone: "sky", icon: "👍" },
+  "😬": { text: "Jännitys on osa peliä. Rohkeus on sitä, että yrittää vaikka jännittää.", highlight: "yrittää vaikka jännittää", tone: "peach", icon: "🤗" },
+  "😤": { text: "Harmitus saa harmittaa. Se kuuluu peliin yhtä paljon kuin ilo.", highlight: "kuuluu peliin", tone: "peach", icon: "🤗" },
+  "🦁": { text: "Mahtava fiilis! Kerrotaan mikä oli päivän rohkein hetki.", highlight: "Mahtava fiilis", tone: "emerald", icon: "💪" },
+};
+const MOMENT_REPLIES = {
+  scared: { text: "Tilanteeseen meneminen jännityksestä huolimatta on rohkeuden ydin.", highlight: "rohkeuden ydin", tone: "peach", icon: "🤗" },
+  steal: { text: "Riistoyritys on aina rohkeusteko, vaikka pallo karkasi.", highlight: "aina rohkeusteko", tone: "sky", icon: "👍" },
+  trick: { text: "Harhautuksen kokeilu vaatii rohkeutta. Hieno valinta.", highlight: "Hieno valinta", tone: "violet", icon: "✨" },
+  run: { text: "Rohkea kuljetus eteenpäin — juuri sellainen pelaaja kasvaa.", highlight: "juuri sellainen pelaaja kasvaa", tone: "amber", icon: "🌟" },
+  again: { text: "Virheen jälkeen jatkaminen on tärkeintä koko pelissä.", highlight: "tärkeintä koko pelissä", tone: "emerald", icon: "💪" },
+  fail: { text: "Mokan sietäminen on supervoima. Sitä harjoittelevat parhaatkin.", highlight: "supervoima", tone: "violet", icon: "✨" },
+  newthing: { text: "Uuden kokeileminen on rohkeutta. Sitä tarvitaan kasvamiseen.", highlight: "Uuden kokeileminen", tone: "amber", icon: "🌟" },
+};
+const AGAIN_REPLIES = {
+  yes: { text: "Hieno juttu. Virheen jälkeen jatkaminen on rohkeuden ydin.", highlight: "rohkeuden ydin", tone: "emerald", icon: "💪" },
+  no: { text: "Virhe vie joskus hetken sulattaa. Huomenna saat uuden mahdollisuuden.", highlight: "uuden mahdollisuuden", tone: "peach", icon: "🤗" },
+  dontremember: { text: "Ihan ok. Kaikkea ei tarvitse muistaa.", highlight: "Kaikkea ei tarvitse muistaa", tone: "sky", icon: "👍" },
+};
+
+const MISSION_REPLIES = {
+  yes: { text: "Hieno juttu, koska uskalsit yrittää.", highlight: "uskalsit yrittää", tone: "emerald", icon: "💪" },
+  no: { text: "Hyvä että huomasit. Katsotaan yhdessä mikä siinä oli vaikeaa.", highlight: "Hyvä että huomasit", tone: "peach", icon: "🤗" },
+  dontremember: { text: "Olit silti mukana — se on tärkeintä. Kaikkea ei tarvitse muistaa.", highlight: "olit silti mukana", tone: "sky", icon: "👍" },
+};
+
+// Reflektiokysymyksen kannustusvastaukset — kun lapsi tunnistaa miltä tuntui
+const REFLECT_REPLIES = {
+  jannitti: { text: "Hyvä että huomasit. Jännitys on rohkeuden vastapari — ei vihollinen.", highlight: "Hyvä että huomasit", tone: "peach", icon: "🤗" },
+  harmitti: { text: "Hyvä että huomasit. Harmitus kertoo, että sinulle on tärkeää.", highlight: "Hyvä että huomasit", tone: "peach", icon: "🤗" },
+  vasytti: { text: "Hyvä että huomasit. Väsymys on ihan oikea syy, ei tekosyy.", highlight: "Hyvä että huomasit", tone: "sky", icon: "👍" },
+  entieda: { text: "Ihan ok. Joskus syytä ei voi nimetä — ja sekin on osa rohkeuden harjoittelua.", highlight: "Ihan ok", tone: "sky", icon: "👍" },
+};
+const PARENT_TIPS = [
+  "Huomasin, että uskalsit yrittää. Se on tärkeämpää kuin onnistuminen.",
+  "Tykkäsin siitä, että menit tilanteeseen vaikka jännitti.",
+  "Tuo riistoyritys oli rohkea.",
+  "Hienoa, että jatkoit virheen jälkeen.",
+  "Tänään kasvatit pelaajarohkeutta.",
+  "Mokat kuuluvat peliin — ja sinä jatkoit.",
+  "Sinä uskalsit yrittää. Siitä se rohkeus rakentuu.",
+  "Olet rohkeampi tänään kuin eilen.",
+  "Hienoa, että pyrit kokeilemaan uutta.",
+  "Tänään uskalsit, ja se riittää.",
+  "Olit kentällä juuri sellainen pelaaja, jota arvostan.",
+  "Näin sinussa rohkeutta tänään. Se kasvaa kun sitä käyttää.",
+];
+// Tehtäväkategoriat — vanhempi voi valita painotuksen asetuksissa
+// Tehtävät on muotoiltu niin, että fokus on YRITTÄMISESSÄ ja USKALTAMISESSA, ei lopputuloksessa
+const MISSIONS_DEFENSE = [
+  "Uskalla mennä lähelle vastustajaa ja yritä pysyä mukana, vaikka hän olisi isompi.",
+  "Yritä riistää pallo, vaikka et olisi varma osumastasi.",
+  "Mene lähelle vastustajaa ja yritä taistella pallosta.",
+  "Taistele pallosta loppuun asti.",
+  "Pysy paikallasi vaikka jännittää — luota itseesi.",
+  "Huuda kaverille ääneen, missä olet ja mitä haluat.",
+  "Asetu vastustajan eteen, vaikka voisit kiertää.",
+  "Mene tilanteeseen rohkeasti ja pysy vahvana kontaktissa.",
+];
+
+const MISSIONS_ATTACK = [
+  "Kokeile harhautusta, vaikka et olisi varma onnistuuko.",
+  "Yritä uudestaan, vaikka edellinen meni huonosti.",
+  "Tee spurtti harhautuksen jälkeen, vaikka pää sanoo pysähdy.",
+  "Uskalla laukoa, vaikka et olisi varma osumasta.",
+  "Kuljeta yksin eteenpäin, vaikka olisi turvallisempi syöttää.",
+  "Kokeile askelharhautusta vastustajan edessä.",
+  "Yritä läpisyöttöä, vaikka se olisi vaikea.",
+  "Pyydä palloa kerran tiukassa paikassa, vaikka se vähän jännittäisi.",
+];
+
+const MISSIONS_GENERAL = [
+  "Hakeudu pelattavaksi — älä jää odottamaan että pallo tulee.",
+  "Pyydä palloa kerran enemmän kuin tavallisesti.",
+  "Yritä vaikean syötön sijaan rohkeaa puolen vaihtoa.",
+  "Mene eteenpäin, vaikka voisit pelata varman taakse.",
+  "Jos teet virheen, yritä heti uudestaan.",
+  "Hymyile virheen jälkeen — sekin on rohkeutta.",
+  "Kannusta yhtä kaveria, kun hän mokaa.",
+  "Yritä vielä kerran, vaikka homma ei suju heti.",
+  "Yritä jotain mihin et ole varma riittäväsi.",
+  "Mene yhteen tilanteeseen, vaikka vähän jännittäisi.",
+];
+
+// Tehtävän tyyppikuvake näytetään etusivulla
+const MISSION_ICONS = { defense: "🛡️", attack: "⚔️", general: "💪" };
+
+// Pienin mahdollinen yritys per haaste — tukee graduated exposure -ajattelua.
+// Jos osumaa ei löydy täsmälleen, käytetään yleistä fallback-tekstiä.
+const SMALLEST_STEPS = {
+  // PUOLUSTUS
+  "Uskalla mennä lähelle vastustajaa ja yritä pysyä mukana, vaikka hän olisi isompi.": "Mene yksi askel kohti vastustajaa ja katso silmiin.",
+  "Yritä riistää pallo, vaikka et olisi varma osumastasi.": "Ota yksi askel kohti pallollista ja yritä häiritä.",
+  "Mene lähelle vastustajaa ja yritä taistella pallosta.": "Mene kerran lähelle ja yritä pysyä mukana.",
+  "Taistele pallosta loppuun asti.": "Yritä koskettaa palloa kerran taistossa.",
+  "Pysy paikallasi vaikka jännittää — luota itseesi.": "Pysy paikallasi vain yhden hetken ajan.",
+  "Huuda kaverille ääneen, missä olet ja mitä haluat.": "Sano kerran ääneen: «täällä!»",
+  "Asetu vastustajan eteen, vaikka voisit kiertää.": "Asetu vastustajan eteen vain yhden kerran.",
+  "Mene tilanteeseen rohkeasti ja pysy vahvana kontaktissa.": "Mene tilanteeseen kerran ja yritä pysyä mukana.",
+  // HYÖKKÄYS
+  "Kokeile harhautusta, vaikka et olisi varma onnistuuko.": "Tee yksi pieni vartaloharhautus, vaikka et pääsisi ohi.",
+  "Yritä uudestaan, vaikka edellinen meni huonosti.": "Pyydä pallo uudestaan yhden virheen jälkeen.",
+  "Tee spurtti harhautuksen jälkeen, vaikka pää sanoo pysähdy.": "Ota kolme nopeaa askelta harhautuksen jälkeen.",
+  "Uskalla laukoa, vaikka et olisi varma osumasta.": "Yritä yhtä laukausta, vaikka se menisi ohi.",
+  "Kuljeta yksin eteenpäin, vaikka olisi turvallisempi syöttää.": "Kuljeta vain yksi askel eteenpäin yksin.",
+  "Kokeile askelharhautusta vastustajan edessä.": "Tee yksi pieni vartaloharhautus vastustajan edessä.",
+  "Yritä läpisyöttöä, vaikka se olisi vaikea.": "Yritä yhtä rohkeaa syöttöä eteenpäin.",
+  "Pyydä palloa kerran tiukassa paikassa, vaikka se vähän jännittäisi.": "Sano kerran ääneen: «täällä!»",
+  // YLEINEN
+  "Hakeudu pelattavaksi — älä jää odottamaan että pallo tulee.": "Liiku kerran kohti pallotilannetta.",
+  "Pyydä palloa kerran enemmän kuin tavallisesti.": "Pyydä pallo yhden kerran ääneen.",
+  "Yritä vaikean syötön sijaan rohkeaa puolen vaihtoa.": "Yritä yhtä rohkeaa syöttöä toiselle laidalle.",
+  "Mene eteenpäin, vaikka voisit pelata varman taakse.": "Ota yksi askel eteenpäin pallon kanssa.",
+  "Jos teet virheen, yritä heti uudestaan.": "Pyydä pallo uudestaan yhden virheen jälkeen.",
+  "Hymyile virheen jälkeen — sekin on rohkeutta.": "Anna itsellesi peukku virheen jälkeen.",
+  "Kannusta yhtä kaveria, kun hän mokaa.": "Sano kerran ääneen: «hyvä yritys!»",
+  "Yritä vielä kerran, vaikka homma ei suju heti.": "Yritä vain yksi kerta lisää.",
+  "Yritä jotain mihin et ole varma riittäväsi.": "Tee yksi pieni rohkea teko, vaikka pieninkin riittää.",
+  "Mene yhteen tilanteeseen, vaikka vähän jännittäisi.": "Mene yhteen tilanteeseen ja yritä olla mukana.",
+};
+
+function getSmallestStepForMission(missionText) {
+  return SMALLEST_STEPS[missionText] || "Yritä yhtä pientä rohkeaa tekoa tänään. Yksi yritys riittää.";
+}
+
+// Pelkoportaat — pohjautuu ahdistuksen lyhytintervention pelkoporras-materiaaliin.
+// Lapsi etenee askelmittain helpommasta vaikeampaan. Toistoja kerätään kullekin askelmalle.
+// Sanavalinnat painottavat rohkeutta ja yrittämistä, EI suoritusta tai onnistumista.
+const LADDER_TEMPLATES = [
+  {
+    id: "weak_foot_tricks",
+    title: "Heikolla jalalla — harhautukset",
+    emoji: "🦵",
+    goal: "Uskallan harhautella heikolla jalalla pelissä",
+    steps: [
+      "Kotona — kokeilen heikolla jalalla rauhassa",
+      "Kotipihalla — kokeilen heikolla jalalla rohkeasti",
+      "Treenissä lämmittelyssä — uskallan kokeilla heikolla",
+      "Treenipelissä — uskallan yrittää heikolla jalalla",
+      "Pelissä — uskallan yrittää heikolla jalalla",
+    ],
+  },
+  {
+    id: "weak_foot_shots",
+    title: "Heikolla jalalla — laukaukset",
+    emoji: "🦵",
+    goal: "Uskallan laukoa heikolla jalalla pelissä",
+    steps: [
+      "Kotona — kokeilen heikolla jalalla seinään",
+      "Kotipihalla — laukon heikolla jalalla rohkeasti",
+      "Treenissä lämmittelyssä — uskallan laukoa heikolla",
+      "Treenipelissä — uskallan laukoa heikolla jalalla",
+      "Pelissä — uskallan laukoa heikolla jalalla",
+    ],
+  },
+  {
+    id: "new_trick",
+    title: "Uusi kikka — kummalla jalalla tahansa",
+    emoji: "🌀",
+    goal: "Uskallan kokeilla uusia kikkoja pelissä",
+    steps: [
+      "Kotona — kokeilen uutta kikkaa rauhassa",
+      "Kotipihalla — kokeilen uutta kikkaa rohkeasti",
+      "Treenissä lämmittelyssä — uskallan kokeilla uutta",
+      "Treenipelissä — yritän uutta kikkaa kerran",
+      "Pelissä — uskallan kokeilla uutta kikkaa",
+    ],
+  },
+  {
+    id: "contact",
+    title: "Kontaktissa — taistelu pallosta",
+    emoji: "🛡️",
+    goal: "Uskallan mennä kontaktiin ja taistella pallosta loppuun",
+    steps: [
+      "Treenissä parin kanssa — uskallan mennä lähelle vastustajaa",
+      "Treenissä — pysyn vahvana kun joku puskee",
+      "Treenipelissä — uskallan taistella pallosta",
+      "Pelissä — taistelen yhdestä pallosta",
+      "Pelissä — taistelen loppuun asti useammin",
+    ],
+  },
+  {
+    id: "ask_ball",
+    title: "Pyytäminen tiukassa paikassa",
+    emoji: "🦁",
+    goal: "Uskallan pyytää palloa myös kun on tiukka paikka",
+    steps: [
+      "Treenissä — pyydän palloa helpossa paikassa",
+      "Treenissä — pyydän palloa kun joku vahtii",
+      "Treenipelissä — uskallan pyytää tiukassa paikassa",
+      "Pelissä — pyydän palloa rohkeasti",
+      "Pelissä — pyydän myös vaikeissa tilanteissa",
+    ],
+  },
+  {
+    id: "sprint_after_trick",
+    title: "Kova juoksu harhautuksen jälkeen",
+    emoji: "⚡",
+    goal: "Uskallan jatkaa täysillä harhautuksen jälkeen",
+    steps: [
+      "Kotipihalla — kokeilen harhautusta ja kovaa juoksua",
+      "Treenissä lämmittelyssä — uskallan jatkaa kovaa",
+      "Treenipelissä — yritän jatkaa harhautuksen jälkeen",
+      "Pelissä — uskallan jatkaa kovaa kerran harhautuksen jälkeen",
+      "Pelissä — jatkan kovaa useamman kerran",
+    ],
+  },
+  {
+    id: "solo_dribble",
+    title: "Yksin kuljettaminen",
+    emoji: "⚔️",
+    goal: "Uskallan kuljettaa rohkeasti yksin pelissä",
+    steps: [
+      "Treenissä — kuljetan rohkeasti tyhjässä",
+      "Treenissä — kuljetan kun joku vahtii hieman",
+      "Treenipelissä — uskallan kuljettaa yksin",
+      "Pelissä — yritän kerran kuljettaa rohkeasti",
+      "Pelissä — uskallan kuljettaa useammin",
+    ],
+  },
+  {
+    id: "continue_after_mistake",
+    title: "Virheen jälkeen jatkaminen",
+    emoji: "🔁",
+    goal: "Uskallan jatkaa pelaamista heti virheen jälkeen",
+    steps: [
+      "Treenissä — yritän uudestaan harjoituksessa",
+      "Treenipelissä — jatkan virheen jälkeen",
+      "Pelissä — pyydän palloa uudestaan virheen jälkeen",
+      "Pelissä — uskallan yrittää saman uudestaan",
+      "Pelissä — jatkan rohkeasti useamman virheen jälkeen",
+    ],
+  },
+];
+
+const DEFAULT_SETTINGS = { rewardsOn: true, rewardsParentOnly: false, minMinutes: 10, bonusMinutes: 5, dailyMaxMinutes: 30, focus: "balanced", rewardType: "minutes", weeklyRewardMin: 45, weeklyGoal: 4 };
+
+// Pienet ei-materiaaliset palkinnot — vaihtoehto padiajalle.
+// Pohjautuu lyhytintervention palkintotaulukon esimerkkeihin (yhteinen tekeminen, lapsen valinta).
+const CHOICE_REWARDS = [
+  "Saat valita tänään illan yhteisen pelin tai leikin.",
+  "Saat valita mitä katsotaan illalla yhdessä.",
+  "Saat valita huomisen aamupalan.",
+  "Saat valita illalliselle jälkiruoan.",
+  "Pääset valitsemaan yhteisen tekemisen viikonlopuksi.",
+  "Saat yhden vapautuksen tämän illan kotihommasta.",
+  "Saat valita illan iltasadun tai musiikin.",
+];
+
+function getChoiceReward(history) {
+  const idx = (history ? history.length : 0) % CHOICE_REWARDS.length;
+  return CHOICE_REWARDS[idx];
+}
+
+// Pienet päivittäiset palkinnot viikkopalkinto-tilassa (per kirjaus).
+// Iso palkinto (padiaika) tulee vasta viikon yrittämisestä.
+const SMALL_REWARDS = [
+  "Hahmosi kasvoi tänään! 🦁",
+  "Saat valita illan iltasadun.",
+  "Pieni herkku tai jäätelö illalla.",
+  "Saat valita illan kirjan iltaluvussa.",
+  "Saat valita illan musiikin.",
+  "Saat valita huomisen aamupalan.",
+];
+
+function getSmallReward(history) {
+  const idx = (history ? history.length : 0) % SMALL_REWARDS.length;
+  return SMALL_REWARDS[idx];
+}
+const TONE_STYLES = {
+  amber:   { box: "bg-amber-100 border-amber-500 text-amber-950",       hl: "text-amber-900 bg-amber-300" },
+  peach:   { box: "bg-orange-100 border-orange-500 text-orange-950",    hl: "text-orange-900 bg-orange-300" },
+  emerald: { box: "bg-emerald-100 border-emerald-500 text-emerald-950", hl: "text-emerald-900 bg-emerald-300" },
+  sky:     { box: "bg-sky-100 border-sky-500 text-sky-950",             hl: "text-sky-900 bg-sky-300" },
+  violet:  { box: "bg-violet-100 border-violet-500 text-violet-950",    hl: "text-violet-900 bg-violet-300" },
+};
+
+// ============================================================
+// HAHMOT JA TEEMAT
+// Jokaiselle lapselle oma hahmo ja oma värimaailma — tunne "tämä on minun peli"
+// ============================================================
+const AVATARS = [
+  { id: "lion",     emoji: "🦁", label: "Leijona" },
+  { id: "tiger",    emoji: "🐯", label: "Tiikeri" },
+  { id: "panda",    emoji: "🐼", label: "Panda" },
+  { id: "wolf",     emoji: "🐺", label: "Susi" },
+  { id: "fox",      emoji: "🦊", label: "Kettu" },
+  { id: "bear",     emoji: "🐻", label: "Karhu" },
+  { id: "eagle",    emoji: "🦅", label: "Kotka" },
+  { id: "shark",    emoji: "🦈", label: "Hai" },
+  { id: "dragon",   emoji: "🐲", label: "Lohikäärme" },
+  { id: "unicorn",  emoji: "🦄", label: "Yksisarvinen" },
+  { id: "robot",    emoji: "🤖", label: "Robotti" },
+  { id: "ninja",    emoji: "🥷", label: "Ninja" },
+];
+
+// Teemat: jokainen lapsi voi valita värimaailman tai se valitaan automaattisesti hahmon perusteella
+const THEMES = {
+  orange: {
+    gradient: "from-amber-400 via-orange-500 to-rose-500",
+    bg: "from-orange-50 via-amber-50 to-rose-50",
+    accent: "orange",
+    name: "Oranssi",
+    button: "from-orange-500 to-rose-500",
+    selectedBorder: "border-orange-500",
+    selectedBg: "bg-orange-50",
+    selectedRing: "ring-orange-200",
+    text: "text-orange-700",
+  },
+  blue: {
+    gradient: "from-sky-400 via-blue-500 to-indigo-500",
+    bg: "from-sky-50 via-blue-50 to-indigo-50",
+    accent: "blue",
+    name: "Sininen",
+    button: "from-sky-500 to-indigo-500",
+    selectedBorder: "border-blue-500",
+    selectedBg: "bg-blue-50",
+    selectedRing: "ring-blue-200",
+    text: "text-blue-700",
+  },
+  green: {
+    gradient: "from-emerald-400 via-green-500 to-teal-500",
+    bg: "from-emerald-50 via-green-50 to-teal-50",
+    accent: "emerald",
+    name: "Vihreä",
+    button: "from-emerald-500 to-teal-500",
+    selectedBorder: "border-emerald-500",
+    selectedBg: "bg-emerald-50",
+    selectedRing: "ring-emerald-200",
+    text: "text-emerald-700",
+  },
+  purple: {
+    gradient: "from-violet-400 via-purple-500 to-fuchsia-500",
+    bg: "from-violet-50 via-purple-50 to-fuchsia-50",
+    accent: "violet",
+    name: "Violetti",
+    button: "from-violet-500 to-fuchsia-500",
+    selectedBorder: "border-violet-500",
+    selectedBg: "bg-violet-50",
+    selectedRing: "ring-violet-200",
+    text: "text-violet-700",
+  },
+};
+const DEFAULT_THEMES_BY_AVATAR = {
+  lion: "orange", tiger: "orange", panda: "green", wolf: "blue", fox: "orange", bear: "purple",
+  eagle: "blue", shark: "blue", dragon: "purple", unicorn: "purple", robot: "blue", ninja: "purple"
+};
+
+// ============================================================
+// LEIJONAN KEHITYS (yhteinen kaikille hahmoille — eivät ole leijonia, mutta sama mekaniikka)
+// ============================================================
+function makeLevels(avatarEmoji) {
+  return [
+    { min: 0,   max: 14,  emoji: avatarEmoji,                   title: "Pieni rohkeus",       desc: "Rohkeus on alkamassa" },
+    { min: 15,  max: 39,  emoji: avatarEmoji + "❤️",            title: "Rohkea sydän",        desc: "Rohkeus alkaa sisältä" },
+    { min: 40,  max: 79,  emoji: avatarEmoji + "🛡️",            title: "Rohkeus suojaa",      desc: "Rohkea ei pelkää virheitä" },
+    { min: 80,  max: 149, emoji: avatarEmoji + "⚔️",            title: "Rohkeus pystyy",      desc: "Rohkea uskaltaa toimia" },
+    { min: 150, max: Infinity, emoji: avatarEmoji + "👑✨",      title: "Rohkeuden mestari",   desc: "Rohkeudesta on tullut osa sinua" },
+  ];
+}
+
+function getCharacterLevel(points, avatarEmoji) {
+  const levels = makeLevels(avatarEmoji);
+  for (let i = levels.length - 1; i >= 0; i--) {
+    if (points >= levels[i].min) return { level: i + 1, ...levels[i] };
+  }
+  return { level: 1, ...levels[0] };
+}
+
+function calcSessionPoints(s) {
+  let p = 0;
+  if (s.bravestMoment) p += 1;
+  if (s.continuedAfterMistake === "yes") p += 2;
+  if (s.missionAttempted === "yes") p += 1;
+  return p;
+}
+
+// ============================================================
+// SAAVUTUKSET
+// ============================================================
+const ACHIEVEMENTS = [
+  { id: "first_brave", title: "Ensimmäinen rohkea hetki", emoji: "🟢", sub: "Rohkeuden polku alkaa.", check: (h) => h.filter(s => s.bravestMoment).length >= 1 },
+  { id: "five_continued", title: "Sinnikkyys", emoji: "🔁", sub: "Olet jatkanut virheen jälkeen viisi kertaa.", check: (h) => h.filter(s => s.continuedAfterMistake === "yes").length >= 5 },
+  { id: "three_scared", title: "Jännityksen voittaja", emoji: "😬", sub: "Olet uskaltanut tilanteeseen jännityksestä huolimatta useamman kerran.", check: (h) => h.filter(s => s.bravestKind === "scared").length >= 3 },
+  { id: "all_brave_kinds", title: "Monipuolinen pelaaja", emoji: "🌈", sub: "Olet kokenut erityyppisiä rohkeita hetkiä.", check: (h) => { const kinds = new Set(h.map(s => s.bravestKind).filter(Boolean)); return kinds.size >= 4; } },
+  { id: "five_failures_ok", title: "Mokan sietäjä", emoji: "😅", sub: "Olet huomannut viisi kertaa että mokat eivät haittaa.", check: (h) => h.filter(s => s.bravestKind === "fail" || s.continuedAfterMistake === "yes").length >= 5 },
+  { id: "ten_sessions", title: "Pelaajarohkeus kasvaa", emoji: "💪", sub: "Olet kirjannut kymmenen rohkeaa hetkeä.", check: (h) => h.filter(s => s.bravestMoment).length >= 10 },
+  { id: "three_newthings", title: "Uusien asioiden uskaltaja", emoji: "🌱", sub: "Olet kokeillut jotain uutta kolme kertaa.", check: (h) => h.filter(s => s.bravestKind === "newthing").length >= 3 },
+];
+
+const SURPRISES = [
+  { type: "minutes", text: "Tänään sait yllätysminuutteja, koska uskalsit yrittää.", emoji: "⏱️" },
+  { type: "title", text: "Sait erikoisarvon: Yllätysrohkea! 🌟", emoji: "🏅" },
+  { type: "char", text: "Hahmosi sai pienen lisävoiman tänään!", emoji: "✨" },
+  { type: "smile", text: "Rohkeat pelaajat saavat joskus yllätyksiä.", emoji: "😄" },
+];
+
+function maybeGetSurprise(session) {
+  if (!session.bravestMoment) return null;
+  if (Math.random() > 0.15) return null;
+  return SURPRISES[Math.floor(Math.random() * SURPRISES.length)];
+}
+
+// Valitsee päivän tehtävän painotuksen perusteella.
+// Painotukset: "balanced" (tasaisesti), "defense60" (60% puolustus), "defense70" (70% puolustus),
+// "attack60" (60% hyökkäys), "attack70" (70% hyökkäys).
+// Loppuosa on aina sekoitus yleisiä ja toista kategoriaa.
+function pickMissionForToday(focus) {
+  const today = new Date();
+  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+
+  // Yhdistetty pooli painotuksen mukaan
+  let pool = [];
+  if (focus === "defense70") {
+    pool = [].concat(MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_GENERAL, MISSIONS_GENERAL, MISSIONS_ATTACK);
+  } else if (focus === "defense60") {
+    pool = [].concat(MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_DEFENSE, MISSIONS_GENERAL, MISSIONS_GENERAL, MISSIONS_ATTACK, MISSIONS_ATTACK);
+  } else if (focus === "attack70") {
+    pool = [].concat(MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_GENERAL, MISSIONS_GENERAL, MISSIONS_DEFENSE);
+  } else if (focus === "attack60") {
+    pool = [].concat(MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_ATTACK, MISSIONS_GENERAL, MISSIONS_GENERAL, MISSIONS_DEFENSE, MISSIONS_DEFENSE);
+  } else {
+    // balanced
+    pool = [].concat(MISSIONS_DEFENSE, MISSIONS_ATTACK, MISSIONS_GENERAL);
+  }
+
+  // pool on jo litteä lista merkkijonoja (.concat litistää yhden tason)
+  const mission = pool[seed % pool.length];
+
+  // Selvitä mistä kategoriasta valittu tehtävä on
+  let type = "general";
+  if (MISSIONS_DEFENSE.indexOf(mission) !== -1) type = "defense";
+  else if (MISSIONS_ATTACK.indexOf(mission) !== -1) type = "attack";
+
+  return { text: mission, type: type };
+}
+
+function calculateStreak(history) {
+  if (!history || history.length === 0) return 0;
+  const days = [...new Set(history.map((h) => new Date(h.date).toDateString()))].map((s) => new Date(s)).sort((a, b) => b - a);
+  if (days.length === 0) return 0;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  const latest = new Date(days[0]); latest.setHours(0, 0, 0, 0);
+  if (latest.getTime() !== today.getTime() && latest.getTime() !== yesterday.getTime()) return 0;
+  let streak = 1;
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1]); prev.setHours(0, 0, 0, 0);
+    const curr = new Date(days[i]); curr.setHours(0, 0, 0, 0);
+    if (Math.round((prev - curr) / (1000 * 60 * 60 * 24)) === 1) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function getTotalPoints(history) {
+  return history.reduce((sum, s) => sum + (s.points || calcSessionPoints(s)), 0);
+}
+function getUnlockedAchievements(history) {
+  return ACHIEVEMENTS.filter(a => a.check(history));
+}
+
+// Yksinkertainen ID-generaattori
+function makeId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+
+const STORAGE_KEY = "rohkeusliiga.v2";
+function loadStorage() { try { var raw = localStorage.getItem(STORAGE_KEY); if (!raw) return null; return JSON.parse(raw); } catch (e) { return null; } }
+function saveStorage(data) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {} }
+
+// ============================================================
+// PÄÄKOMPONENTTI
+// ============================================================
+function Rohkeusliiga() {
+  const stored = loadStorage();
+  const [players, setPlayers] = useState((stored && stored.players) || []);
+  const [activePlayerId, setActivePlayerId] = useState(null);
+  const [settings, setSettings] = useState(Object.assign({}, DEFAULT_SETTINGS, (stored && stored.settings) || {}));
+  useEffect(function() { saveStorage({ players: players, settings: settings }); }, [players, settings]);
+
+  // Ruutu — alkaa pelaajan valinnasta jos pelaajia on, muuten luonnista
+  const [screen, setScreen] = useState("playerSelect");
+
+  // Kirjauksen tila
+  // todayMission lasketaan joka renderissä — eli muuttuu jos vanhempi vaihtaa painotuksen.
+  // Saman päivän sisällä sama painotus tuottaa aina saman tehtävän (deterministinen seed).
+  const todayMission = pickMissionForToday(settings.focus);
+  const [session, setSession] = useState(emptySession());
+  const [currentSurprise, setCurrentSurprise] = useState(null);
+  const [newAchievements, setNewAchievements] = useState([]);
+  const [previousLevel, setPreviousLevel] = useState(1);
+
+  function emptySession() {
+    return {
+      date: new Date().toISOString(),
+      mood: null, bravestMoment: null, bravestKind: null,
+      continuedAfterMistake: null, missionAttempted: null, missionDifficulty: null,
+      prePracticeAnxiety: null, postPracticeAnxiety: null,
+      title: "", minutes: 0, points: 0,
+    };
+  }
+
+  const activePlayer = players.find(p => p.id === activePlayerId);
+  const theme = activePlayer ? THEMES[activePlayer.theme] || THEMES.orange : THEMES.orange;
+
+  function calcTitle(s) {
+    const map = {
+      steal: { text: "Riistoagentti", emoji: "🛡️" }, trick: { text: "Harhautusvelho", emoji: "🌀" },
+      run: { text: "Kuljetussalama", emoji: "⚡" }, scared: { text: "Rohkeusleijona", emoji: "🦁" },
+      again: { text: "Uudestaan yrittäjä", emoji: "🔁" }, fail: { text: "Mestarimokaaja", emoji: "😅" },
+      newthing: { text: "Uuden kokeilija", emoji: "🌱" },
+    };
+    return map[s.bravestKind] || { text: "Tänään uskalsin -pelaaja", emoji: "💪" };
+  }
+  function calcMinutes(s, surprise) {
+    if (!settings.rewardsOn) return 0;
+    let m = s.bravestMoment ? settings.minMinutes : 0;
+    if (s.continuedAfterMistake === "yes") m += settings.bonusMinutes;
+    if (surprise && surprise.type === "minutes") m += 5;
+    return Math.min(m, settings.dailyMaxMinutes);
+  }
+
+  function finalizeSession() {
+    if (!activePlayer) return;
+    const beforePts = getTotalPoints(activePlayer.history || []);
+    const beforeLevel = getCharacterLevel(beforePts, getAvatarEmoji(activePlayer)).level;
+    setPreviousLevel(beforeLevel);
+
+    const surprise = maybeGetSurprise(session);
+    setCurrentSurprise(surprise);
+
+    const titleObj = calcTitle(session);
+    let titleText = titleObj.text;
+    if (surprise && surprise.type === "title") titleText = "Yllätysrohkea";
+
+    const points = calcSessionPoints(session);
+    // Padiaikaa kertyy pankkiin vain jos palkintotyyppi on "minutes".
+    // Muissa tiloissa (valinnat / hahmon kasvu) ei kerry minuutteja saldoon.
+    const minutes = settings.rewardType === "minutes" ? calcMinutes(session, surprise) : 0;
+    // Tallenna ennakkomittarin arvo sessio-historiaan
+    const todayPreRating = getDailyPreRating(activePlayer);
+    const finished = { ...session, prePracticeAnxiety: todayPreRating, title: `${titleObj.emoji} ${titleText}`, minutes, points };
+
+    const oldHistory = activePlayer.history || [];
+    const beforeUnlocked = getUnlockedAchievements(oldHistory).map(a => a.id);
+    const newHistory = [...oldHistory, finished];
+    const afterUnlocked = getUnlockedAchievements(newHistory);
+    const justUnlocked = afterUnlocked.filter(a => !beforeUnlocked.includes(a.id));
+
+    setSession(finished);
+    setNewAchievements(justUnlocked);
+    // Funktionaalinen päivitys: jos addLadderRep on jo päivittänyt tilaa samassa
+    // tapahtumakäsittelijässä, käytetään sen jälkeistä tilaa eikä korvata muutosta.
+    setPlayers(prev => prev.map(p => p.id === activePlayerId ? { ...p, history: newHistory } : p));
+  }
+
+  function startNewSession() {
+    setSession(emptySession());
+    setCurrentSurprise(null);
+    setNewAchievements([]);
+    setScreen("home");
+  }
+
+  function getAvatarEmoji(player) {
+    return AVATARS.find(a => a.id === player.avatar)?.emoji || "🦁";
+  }
+
+  // Pelaajan valinta
+  function selectPlayer(id) {
+    setActivePlayerId(id);
+    setSession(emptySession());
+    setCurrentSurprise(null);
+    setNewAchievements([]);
+    setScreen("home");
+  }
+
+  function addPlayer({ name, avatar, theme }) {
+    const player = {
+      id: makeId(),
+      name: name.trim(),
+      avatar,
+      theme: theme || DEFAULT_THEMES_BY_AVATAR[avatar] || "orange",
+      history: [],
+      ladder: null,
+      completedLadders: [],
+      dailyPreRatings: {}, // { "YYYY-MM-DD": <0-10> } — ennakkomittari per päivä
+      padiUsed: 0, // Käytetty padiaika minuutteina (saldolaskuria varten)
+      padiBonus: 0, // Manuaalisesti myönnetty padiaika (esim. viikkopalkinto)
+    };
+    setPlayers([...players, player]);
+    setActivePlayerId(player.id);
+    setScreen("home");
+  }
+
+  function updatePlayer(id, updates) {
+    // Funktionaalinen päivitys — varmistaa että muutos ei katoa peräkkäisissä
+    // setPlayers-kutsuissa (esim. kun portaikkofunktiot ja sessio päivittyvät samassa
+    // tapahtumakäsittelijässä).
+    setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  }
+
+  function deletePlayer(id) {
+    const remaining = players.filter(p => p.id !== id);
+    setPlayers(remaining);
+    if (activePlayerId === id) {
+      setActivePlayerId(null);
+      setScreen("playerSelect");
+    }
+  }
+
+  function logout() {
+    setActivePlayerId(null);
+    setScreen("playerSelect");
+  }
+
+  // Päivän avain rohkeusmittarille
+  function getTodayKey() {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  }
+
+  // Aseta ennakkomittarin arvo tämänpäiväiselle päivälle
+  function setDailyPreRating(playerId, value) {
+    const key = getTodayKey();
+    setPlayers(prev => prev.map(p => {
+      if (p.id !== playerId) return p;
+      const dailyPreRatings = { ...(p.dailyPreRatings || {}) };
+      dailyPreRatings[key] = value;
+      return { ...p, dailyPreRatings };
+    }));
+  }
+
+  // Hae ennakkomittarin arvo tämänpäiväiselle päivälle
+  function getDailyPreRating(player) {
+    if (!player || !player.dailyPreRatings) return null;
+    return player.dailyPreRatings[getTodayKey()] ?? null;
+  }
+
+  // Padiaikapankki: ansaittu = kaikkien kirjausten minuutit + manuaaliset bonukset, saldo = ansaittu − käytetty
+  function getPadiBalance(player) {
+    if (!player) return 0;
+    const earned = (player.history || []).reduce((s, h) => s + (h.minutes || 0), 0) + (player.padiBonus || 0);
+    return Math.max(0, earned - (player.padiUsed || 0));
+  }
+
+  // Merkitse padiaikaa käytetyksi (vanhempi vähentää saldoa)
+  function usePadiMinutes(playerId, amount) {
+    setPlayers(prev => prev.map(p => {
+      if (p.id !== playerId) return p;
+      return { ...p, padiUsed: (p.padiUsed || 0) + amount };
+    }));
+  }
+
+  // Myönnä padiaikabonus (esim. viikkopalkinto) — lisää saldoon
+  function grantPadiBonus(playerId, amount) {
+    setPlayers(prev => prev.map(p => {
+      if (p.id !== playerId) return p;
+      return { ...p, padiBonus: (p.padiBonus || 0) + amount };
+    }));
+  }
+
+  // Montako kirjausta tällä viikolla (maanantaista alkaen)
+  function sessionsThisWeek(player) {
+    if (!player || !player.history) return 0;
+    const now = new Date();
+    const day = (now.getDay() + 6) % 7; // ma=0 ... su=6
+    const monday = new Date(now);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(now.getDate() - day);
+    // Laske uniikit päivät joina on kirjattu (ei useita per päivä)
+    const days = new Set();
+    player.history.forEach(h => {
+      const d = new Date(h.date);
+      if (d >= monday) days.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+    });
+    return days.size;
+  }
+
+  // Pelkoportaikkojen hallinta
+  function startLadder(playerId, templateId) {
+    const template = LADDER_TEMPLATES.find(t => t.id === templateId);
+    if (!template) return;
+    const newLadder = {
+      id: templateId,
+      currentStep: 0, // 0-indeksoitu
+      repsPerStep: template.steps.map(() => 0),
+      startedAt: new Date().toISOString(),
+    };
+    updatePlayer(playerId, { ladder: newLadder });
+  }
+
+  function addLadderRep(playerId) {
+    // Käytetään funktionaalista päivitystä, koska tämä saatetaan kutsua samassa
+    // tapahtumakäsittelijässä finalizeSession:n kanssa — silloin tavallinen players
+    // -viittaus olisi vielä vanhentunut.
+    setPlayers(prev => prev.map(p => {
+      if (p.id !== playerId || !p.ladder) return p;
+      const newReps = [...p.ladder.repsPerStep];
+      newReps[p.ladder.currentStep] = (newReps[p.ladder.currentStep] || 0) + 1;
+      return { ...p, ladder: { ...p.ladder, repsPerStep: newReps, lastRepDate: getTodayKey() } };
+    }));
+  }
+
+  function advanceLadderStep(playerId) {
+    const player = players.find(p => p.id === playerId);
+    if (!player || !player.ladder) return;
+    const template = LADDER_TEMPLATES.find(t => t.id === player.ladder.id);
+    if (!template) return;
+    const nextStep = player.ladder.currentStep + 1;
+    if (nextStep >= template.steps.length) {
+      // Portaikko valmis — siirretään completedLadders-listaan
+      const completed = [...(player.completedLadders || []), { id: player.ladder.id, completedAt: new Date().toISOString() }];
+      updatePlayer(playerId, { ladder: null, completedLadders: completed });
+    } else {
+      updatePlayer(playerId, { ladder: { ...player.ladder, currentStep: nextStep } });
+    }
+  }
+
+  function stopLadder(playerId) {
+    updatePlayer(playerId, { ladder: null });
+  }
+
+  // Siirry askelmalla yksi taaksepäin (toistot säilyvät)
+  function goBackLadderStep(playerId) {
+    const player = players.find(p => p.id === playerId);
+    if (!player || !player.ladder || player.ladder.currentStep <= 0) return;
+    updatePlayer(playerId, {
+      ladder: { ...player.ladder, currentStep: player.ladder.currentStep - 1 }
+    });
+  }
+
+  // Nollaa nykyisen askelman toistot (pehmeä nollaus)
+  function resetCurrentStepReps(playerId) {
+    const player = players.find(p => p.id === playerId);
+    if (!player || !player.ladder) return;
+    const newReps = [...player.ladder.repsPerStep];
+    newReps[player.ladder.currentStep] = 0;
+    updatePlayer(playerId, { ladder: { ...player.ladder, repsPerStep: newReps } });
+  }
+
+  // Aloita uudelleen jo suoritettu portaikko
+  function restartCompletedLadder(playerId, templateId) {
+    const player = players.find(p => p.id === playerId);
+    if (!player) return;
+    // Poistetaan completedLadders-listalta tämä portaikko ja aloitetaan se uudelleen
+    const newCompleted = (player.completedLadders || []).filter(c => c.id !== templateId);
+    const template = LADDER_TEMPLATES.find(t => t.id === templateId);
+    if (!template) return;
+    const newLadder = {
+      id: templateId,
+      currentStep: 0,
+      repsPerStep: template.steps.map(() => 0),
+      startedAt: new Date().toISOString(),
+    };
+    updatePlayer(playerId, { ladder: newLadder, completedLadders: newCompleted });
+  }
+
+  // ============================================================
+  // RENDER — pelaajan valinta on oma näkymä, muuten normaalit ruudut
+  // ============================================================
+  const charLevel = activePlayer
+    ? getCharacterLevel(getTotalPoints(activePlayer.history || []), getAvatarEmoji(activePlayer))
+    : null;
+  const charLeveledUp = charLevel && charLevel.level > previousLevel;
+
+  return (
+    <div className={`min-h-screen w-full bg-gradient-to-b ${theme.bg}`}>
+      <style>{`
+        @keyframes pop-in { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+        .animate-pop { animation: pop-in 0.5s cubic-bezier(.34,1.56,.64,1) both; }
+        @keyframes pop-big { 0% { transform: scale(0.85) translateY(8px); opacity: 0; } 60% { transform: scale(1.04) translateY(-2px); opacity: 1; } 100% { transform: scale(1) translateY(0); } }
+        .animate-pop-big { animation: pop-big 0.55s cubic-bezier(.34,1.56,.64,1) both; }
+        @keyframes wiggle { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+        .animate-wiggle { animation: wiggle 1.6s ease-in-out infinite; }
+        @keyframes float-slow { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
+        .animate-float { animation: float-slow 4s ease-in-out infinite; }
+        @keyframes sparkle { 0%,100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+        .animate-sparkle { animation: sparkle 1.8s ease-in-out infinite; }
+        @keyframes bounce-once { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.15); } 60% { transform: scale(0.95); } }
+        .animate-bounce-once { animation: bounce-once 0.8s ease-in-out; }
+        @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 6px rgba(251,191,36,0.6)); } 50% { filter: drop-shadow(0 0 14px rgba(251,191,36,1)); } }
+        .animate-glow { animation: glow 2s ease-in-out infinite; }
+        .font-display { font-family: Georgia, "Times New Roman", serif; font-weight: 800; letter-spacing: -0.01em; }
+      `}</style>
+      <div className="mx-auto max-w-md px-5 pb-12 pt-6">
+        {/* Pelaajan valinta — ei näytetä headeria */}
+        {screen === "playerSelect" && (
+          <PlayerSelect players={players} onSelect={selectPlayer} onAdd={() => setScreen("addPlayer")} onManage={() => setScreen("managePlayers")} />
+        )}
+        {screen === "addPlayer" && (
+          <AddPlayer onSave={addPlayer} onCancel={() => setScreen(players.length > 0 ? "playerSelect" : "playerSelect")} canCancel={players.length > 0} />
+        )}
+        {screen === "managePlayers" && (
+          <ManagePlayers players={players} onUpdate={updatePlayer} onDelete={deletePlayer} onBack={() => setScreen("playerSelect")} />
+        )}
+
+        {/* Kirjautuneen näkymät */}
+        {activePlayer && screen !== "playerSelect" && screen !== "addPlayer" && screen !== "managePlayers" && (
+          <>
+            <header className="mb-6 flex items-center justify-between">
+              <button onClick={() => setScreen("home")} className="font-display text-2xl text-amber-900">
+                Rohkeusliiga
+              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setScreen("achievements")} className="rounded-full bg-white/70 p-2 text-amber-800 shadow" aria-label="Saavutukset">
+                  <span className="text-lg">🏅</span>
+                </button>
+                <button onClick={() => setScreen("week")} className="rounded-full bg-white/70 p-2 text-amber-800 shadow" aria-label="Viikkonäkymä">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </button>
+                <button onClick={() => setScreen("settings")} className="rounded-full bg-white/70 p-2 text-amber-800 shadow" aria-label="Asetukset">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
+                <button onClick={logout} className="rounded-full bg-white/70 p-2 text-amber-800 shadow" aria-label="Vaihda pelaajaa">
+                  <span className="text-lg">👤</span>
+                </button>
+              </div>
+            </header>
+
+            {screen === "home" && <Home
+              player={activePlayer}
+              mission={todayMission}
+              streak={calculateStreak(activePlayer.history || [])}
+              charLevel={charLevel}
+              theme={theme}
+              totalPoints={getTotalPoints(activePlayer.history || [])}
+              preRating={getDailyPreRating(activePlayer)}
+              onPrePractice={() => setScreen("prePractice")}
+              onAfterPractice={() => { setSession(emptySession()); setCurrentSurprise(null); setNewAchievements([]); setScreen("mood"); }}
+              onLadderPractice={() => setScreen("ladderPractice")}
+              onUpdatePlayer={(updates) => updatePlayer(activePlayerId, updates)}
+            />}
+            {screen === "prePractice" && <PrePractice
+              player={activePlayer}
+              mission={todayMission}
+              theme={theme}
+              preRating={getDailyPreRating(activePlayer)}
+              onSetPreRating={(v) => setDailyPreRating(activePlayerId, v)}
+              onBack={() => setScreen("home")}
+              onDone={() => setScreen("home")}
+            />}
+            {screen === "mood" && <Mood player={activePlayer} theme={theme} value={session.mood} onPick={(m) => setSession({ ...session, mood: m })} onNext={() => setScreen("moment")} onBack={() => setScreen("home")} onSkip={() => setScreen("moment")} />}
+            {screen === "moment" && <Moment theme={theme} session={session} setSession={setSession} onNext={() => setScreen("again")} onBack={() => setScreen("mood")} onSkip={() => setScreen("again")} />}
+            {screen === "again" && <Again theme={theme} session={session} setSession={setSession} onNext={() => setScreen("mission")} onBack={() => setScreen("moment")} onSkip={() => setScreen("mission")} />}
+            {screen === "mission" && <MissionCheck mission={todayMission} theme={theme} session={session} setSession={setSession} preRating={getDailyPreRating(activePlayer)} onNext={() => {
+              if (session.missionAttempted === "no") {
+                setScreen("reflect");
+              } else {
+                finalizeSession();
+                setScreen("result");
+              }
+            }} onBack={() => setScreen("again")} onSkip={() => { finalizeSession(); setScreen("result"); }} />}
+            {screen === "reflect" && <MissionReflect theme={theme} session={session} setSession={setSession} onNext={() => {
+              finalizeSession();
+              setScreen("result");
+            }} onBack={() => setScreen("mission")} />}
+            {screen === "ladderPractice" && <LadderPractice
+              player={activePlayer}
+              theme={theme}
+              alreadyLoggedToday={activePlayer.ladder && activePlayer.ladder.lastRepDate === getTodayKey()}
+              onAddRep={() => addLadderRep(activePlayer.id)}
+              onBack={() => setScreen("home")}
+            />}
+            {screen === "result" && <Result player={activePlayer} session={session} settings={settings} surprise={currentSurprise} newAchievements={newAchievements} charLevel={charLevel} charLeveledUp={charLeveledUp} theme={theme} onDone={startNewSession} />}
+            {screen === "settings" && <SettingsScreen settings={settings} setSettings={setSettings} player={activePlayer} padiBalance={getPadiBalance(activePlayer)} weekSessions={sessionsThisWeek(activePlayer)} onUsePadi={(amount) => usePadiMinutes(activePlayerId, amount)} onGrantPadiBonus={(amount) => grantPadiBonus(activePlayerId, amount)} onStartLadder={(tId) => startLadder(activePlayerId, tId)} onAdvanceLadder={() => advanceLadderStep(activePlayerId)} onStopLadder={() => stopLadder(activePlayerId)} onGoBackLadder={() => goBackLadderStep(activePlayerId)} onResetStepReps={() => resetCurrentStepReps(activePlayerId)} onRestartCompletedLadder={(tId) => restartCompletedLadder(activePlayerId, tId)} onBack={() => setScreen("home")} onManagePlayers={() => setScreen("managePlayers")} />}
+            {screen === "week" && <WeekView player={activePlayer} theme={theme} onBack={() => setScreen("home")} />}
+            {screen === "achievements" && <AchievementsScreen history={activePlayer.history || []} onBack={() => setScreen("home")} />}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// PELAAJAN VALINTA
+// Tärkeää: tässä näkymässä EI näytetä pelaajien pisteitä, tasoja tai saavutuksia.
+// Vain nimi + hahmo. Ei vertailua mahdolliseksi.
+// ============================================================
+function PlayerSelect({ players, onSelect, onAdd, onManage }) {
+  if (players.length === 0) {
+    // Ensimmäinen kerta — ohjataan suoraan luontiin
+    return (
+      <div className="animate-pop pt-12 text-center">
+        <div className="text-6xl mb-6">🦁</div>
+        <h1 className="font-display text-3xl text-amber-900 mb-3">Tervetuloa Rohkeusliigaan!</h1>
+        <p className="text-amber-800/80 mb-8 leading-relaxed">
+          Lisää ensin pelaaja, niin pääsette aloittamaan.
+        </p>
+        <BigButton onClick={onAdd}>➕ Lisää pelaaja</BigButton>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-pop">
+      <h1 className="font-display text-3xl text-amber-900 mb-2 text-center">Kuka pelaa tänään?</h1>
+      <p className="text-amber-800/70 mb-6 text-center">Valitse pelaaja</p>
+
+      <div className="space-y-3 mb-5">
+        {players.map(p => {
+          const avatar = AVATARS.find(a => a.id === p.avatar);
+          const playerTheme = THEMES[p.theme] || THEMES.orange;
+          return (
+            <button
+              key={p.id}
+              onClick={() => onSelect(p.id)}
+              className={`w-full flex items-center gap-4 rounded-2xl border-2 p-5 shadow-xl transition active:translate-y-0.5 bg-gradient-to-br ${playerTheme.gradient} text-white`}
+            >
+              <div className="text-5xl">{avatar?.emoji || "🦁"}</div>
+              <div className="flex-1 text-left">
+                <div className="font-display text-2xl" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{p.name}</div>
+                <div className="text-sm opacity-90">Aloita pelaaminen</div>
+              </div>
+              <div className="text-2xl opacity-80">→</div>
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        onClick={onAdd}
+        className="w-full rounded-2xl border-2 border-dashed border-amber-400 bg-white/60 p-4 font-display text-lg text-amber-900 active:translate-y-0.5"
+      >
+        ➕ Lisää uusi pelaaja
+      </button>
+
+      <button
+        onClick={onManage}
+        className="w-full mt-3 text-center text-sm text-amber-800/70"
+      >
+        Pelaajien hallinta →
+      </button>
+    </div>
+  );
+}
+
+function AddPlayer({ onSave, onCancel, canCancel }) {
+  const [name, setName] = useState("");
+  const [avatar, setAvatar] = useState("lion");
+  const [themeKey, setThemeKey] = useState(DEFAULT_THEMES_BY_AVATAR["lion"] || "orange");
+  const valid = name.trim().length > 0;
+
+  // Kun hahmo vaihtuu, ehdotetaan myös oletusväriä — mutta vain jos käyttäjä ei ole vielä itse koskenut väriin
+  const [themeManuallyChanged, setThemeManuallyChanged] = useState(false);
+  function pickAvatar(id) {
+    setAvatar(id);
+    if (!themeManuallyChanged) {
+      setThemeKey(DEFAULT_THEMES_BY_AVATAR[id] || "orange");
+    }
+  }
+  function pickTheme(key) {
+    setThemeKey(key);
+    setThemeManuallyChanged(true);
+  }
+
+  const previewTheme = THEMES[themeKey] || THEMES.orange;
+  const previewAvatar = AVATARS.find(a => a.id === avatar);
+  const displayName = name.trim() || "...";
+
+  return (
+    <div className="animate-pop">
+      {canCancel && (
+        <button onClick={onCancel} className="mb-4 flex items-center gap-1 text-sm font-bold text-amber-800">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Takaisin
+        </button>
+      )}
+
+      {/* LIVE-ESIKATSELU — päivittyy reaaliajassa */}
+      <div className={`relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br ${previewTheme.gradient} p-6 text-white shadow-xl`}>
+        <div className="text-xs font-bold uppercase tracking-wider opacity-90 mb-2">Esikatselu</div>
+        <div className="flex items-center gap-4">
+          <div className="text-6xl animate-float">{previewAvatar?.emoji || "🦁"}</div>
+          <div className="flex-1">
+            <div className="font-display text-3xl text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+              {displayName}
+            </div>
+            <div className="text-sm opacity-90 mt-1">{previewAvatar?.label}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* NIMI */}
+      <div className="mb-4 rounded-2xl border-2 border-amber-300 bg-white p-4 shadow">
+        <label className="block text-xs font-extrabold uppercase tracking-wider text-orange-700 mb-2">Nimi</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={20}
+          placeholder="Esim. Leo"
+          autoFocus
+          className="w-full font-display text-xl text-amber-950 border-b-2 border-amber-200 focus:border-orange-500 focus:outline-none pb-1 bg-transparent"
+        />
+      </div>
+
+      {/* HAHMO */}
+      <div className="mb-4 rounded-2xl border-2 border-amber-300 bg-white p-4 shadow">
+        <label className="block text-xs font-extrabold uppercase tracking-wider text-orange-700 mb-3">Hahmo</label>
+        <div className="grid grid-cols-4 gap-2">
+          {AVATARS.map(a => (
+            <button
+              key={a.id}
+              onClick={() => pickAvatar(a.id)}
+              className={`p-2 rounded-xl border-2 flex flex-col items-center gap-1 transition ${avatar === a.id ? "border-orange-500 bg-orange-50 ring-2 ring-orange-200" : "border-amber-200 bg-white"}`}
+            >
+              <div className="text-3xl">{a.emoji}</div>
+              <div className="text-[10px] font-bold text-amber-900">{a.label}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* VÄRI */}
+      <div className="mb-6 rounded-2xl border-2 border-amber-300 bg-white p-4 shadow">
+        <label className="block text-xs font-extrabold uppercase tracking-wider text-orange-700 mb-3">Väri</label>
+        <div className="grid grid-cols-2 gap-2">
+          {Object.entries(THEMES).map(([key, t]) => (
+            <button
+              key={key}
+              onClick={() => pickTheme(key)}
+              className={`p-3 rounded-xl bg-gradient-to-br ${t.gradient} text-white font-display text-sm shadow ${themeKey === key ? "ring-4 ring-amber-400" : ""}`}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <BigButton onClick={() => valid && onSave({ name, avatar, theme: themeKey })} disabled={!valid}>
+        Tallenna
+      </BigButton>
+    </div>
+  );
+}
+
+function ManagePlayers({ players, onUpdate, onDelete, onBack }) {
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editAvatar, setEditAvatar] = useState("lion");
+  const [editTheme, setEditTheme] = useState("orange");
+
+  function startEdit(p) {
+    setEditingId(p.id);
+    setEditName(p.name);
+    setEditAvatar(p.avatar);
+    setEditTheme(p.theme);
+  }
+
+  function saveEdit() {
+    onUpdate(editingId, { name: editName.trim(), avatar: editAvatar, theme: editTheme });
+    setEditingId(null);
+  }
+
+  function confirmDelete(p) {
+    if (confirm(`Haluatko varmasti poistaa pelaajan "${p.name}"? Kaikki hänen tietonsa häviävät.`)) {
+      onDelete(p.id);
+    }
+  }
+
+  return (
+    <div className="animate-pop">
+      <button onClick={onBack} className="mb-4 flex items-center gap-1 text-sm font-bold text-amber-800">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Takaisin
+      </button>
+      <h2 className="font-display text-3xl text-amber-900 mb-2">Pelaajien hallinta</h2>
+      <p className="text-amber-800/70 mb-6">Muokkaa nimeä, hahmoa, väriä tai poista pelaaja.</p>
+
+      <div className="space-y-3">
+        {players.map(p => {
+          const avatar = AVATARS.find(a => a.id === p.avatar);
+          if (editingId === p.id) {
+            return (
+              <div key={p.id} className="rounded-2xl border-2 border-orange-400 bg-white p-4 shadow-xl">
+                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={20}
+                  className="w-full font-display text-xl text-amber-950 border-b-2 border-amber-200 focus:border-orange-500 focus:outline-none pb-1 bg-transparent mb-4" />
+                <div className="text-xs font-extrabold uppercase tracking-wider text-orange-700 mb-2">Hahmo</div>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {AVATARS.map(a => (
+                    <button key={a.id} onClick={() => setEditAvatar(a.id)}
+                      className={`p-2 rounded-xl border-2 ${editAvatar === a.id ? "border-orange-500 bg-orange-50" : "border-amber-200 bg-white"}`}>
+                      <div className="text-2xl">{a.emoji}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="text-xs font-extrabold uppercase tracking-wider text-orange-700 mb-2">Väriteema</div>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {Object.entries(THEMES).map(([key, t]) => (
+                    <button key={key} onClick={() => setEditTheme(key)}
+                      className={`p-3 rounded-xl border-2 bg-gradient-to-br ${t.gradient} text-white font-display text-sm ${editTheme === key ? "ring-4 ring-orange-200" : ""}`}>
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={saveEdit} className="flex-1 bg-orange-500 text-white rounded-xl py-2 font-display">Tallenna</button>
+                  <button onClick={() => setEditingId(null)} className="flex-1 bg-amber-100 text-amber-900 rounded-xl py-2 font-display">Peruuta</button>
+                </div>
+                <button onClick={() => confirmDelete(p)} className="w-full mt-3 text-sm text-red-600 underline">Poista pelaaja</button>
+              </div>
+            );
+          }
+          return (
+            <div key={p.id} className="flex items-center gap-3 rounded-2xl border-2 border-amber-200 bg-white p-4 shadow">
+              <div className="text-4xl">{avatar?.emoji || "🦁"}</div>
+              <div className="flex-1">
+                <div className="font-display text-lg text-amber-900">{p.name}</div>
+                <div className="text-xs text-amber-800/70">{(p.history || []).length} kirjausta</div>
+              </div>
+              <button onClick={() => startEdit(p)} className="rounded-xl bg-amber-100 px-3 py-2 text-sm font-bold text-amber-900">Muokkaa</button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Home({ player, mission, streak, charLevel, theme, totalPoints, preRating, onPrePractice, onAfterPractice, onLadderPractice, onUpdatePlayer }) {
+  const [showQuickChange, setShowQuickChange] = useState(false);
+
+  // Sumea progressin laskenta — ei näytetä numeroita, vain visuaalinen kasvu
+  const levels = [0, 15, 40, 80, 150];
+  const currentLevelIndex = charLevel.level - 1;
+  const currentMin = levels[currentLevelIndex];
+  const nextMin = levels[currentLevelIndex + 1];
+  let progressPercent;
+  if (nextMin) {
+    progressPercent = ((totalPoints - currentMin) / (nextMin - currentMin)) * 100;
+    progressPercent = Math.max(5, Math.min(100, progressPercent));
+  } else {
+    progressPercent = 100;
+  }
+
+  return (
+    <div className="animate-pop">
+      <div className={`relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br ${theme.gradient} p-7 text-white shadow-xl`}>
+        <div className="absolute right-5 top-5 text-5xl animate-float">{charLevel.emoji}</div>
+        {streak > 1 && (
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-sm font-extrabold text-orange-700 shadow">
+            <span>🔥</span><span>{streak} päivää putkeen</span>
+          </div>
+        )}
+        <h1 className="font-display text-2xl text-white mb-1" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+          Hei {player.name}!
+        </h1>
+        <h2 className="font-display text-2xl text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>Yksi rohkea hetki päivässä.</h2>
+        <p className="font-display mt-2 text-base leading-snug text-white/95" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>Ei lasketa onnistumista. Lasketaan rohkeutta.</p>
+      </div>
+
+      {/* Klikattava hahmokortti — paina vaihtaaksesi hahmoa tai väriä */}
+      <button
+        onClick={() => setShowQuickChange(true)}
+        className="w-full mb-5 rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow text-left active:translate-y-0.5"
+      >
+        <div className="flex items-center gap-4">
+          <div className="text-4xl">{charLevel.emoji}</div>
+          <div className="flex-1">
+            <div className="font-display text-base text-amber-900">{charLevel.title}</div>
+            <div className="text-xs text-amber-800/70">{charLevel.desc}</div>
+          </div>
+          <div className="text-xs font-bold text-orange-700 bg-white rounded-full px-3 py-1 shadow">Vaihda ↻</div>
+        </div>
+        <div className="mt-3 h-2 w-full rounded-full bg-amber-200/60 overflow-hidden">
+          <div
+            className={`h-full bg-gradient-to-r ${theme.gradient} transition-all duration-700`}
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <div className="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-700/70 text-center">
+          Rohkeus kasvaa
+        </div>
+      </button>
+
+      {/* SINUN HARJOITUKSESI — vie omalle sivulle. Jos portaikko aktiivinen, näytä nykyinen askelma. */}
+      {player.ladder && (() => {
+        const template = LADDER_TEMPLATES.find(t => t.id === player.ladder.id);
+        if (!template) return null;
+        const stepIdx = player.ladder.currentStep;
+        const stepText = template.steps[stepIdx];
+        const reps = player.ladder.repsPerStep[stepIdx] || 0;
+        return (
+          <button
+            onClick={onLadderPractice}
+            className="w-full mb-5 rounded-2xl border-2 border-violet-300 bg-violet-50 p-5 shadow text-left active:translate-y-0.5"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">🪜</span>
+              <div className="flex-1">
+                <div className="text-xs font-extrabold uppercase tracking-wider text-violet-800">Sinun harjoituksesi</div>
+                <div className="text-[10px] text-violet-700/70">{template.title} — askelma {stepIdx + 1}/{template.steps.length}</div>
+              </div>
+              <span className="text-xs font-bold text-violet-700 bg-white rounded-full px-3 py-1 shadow">Avaa →</span>
+            </div>
+            <p className="font-display text-lg leading-snug text-violet-950 mb-3">{stepText}</p>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span key={i} className="text-xl">{i < reps ? "🦁" : "⚪"}</span>
+              ))}
+            </div>
+            <p className="text-[11px] italic text-violet-800/70 mt-2">Yritys riittää. Jokainen yritys on yksi rohkeuden leijona.</p>
+          </button>
+        );
+      })()}
+
+      {/* KAKSI ISOA NAPPIA: ennen treeniä / jälkeen */}
+      <div className="space-y-3">
+        <button
+          onClick={onPrePractice}
+          className={`w-full rounded-2xl px-6 py-5 font-display text-xl text-white shadow-xl transition bg-gradient-to-br ${theme.button}`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <span>🎯</span>
+            <span>Ennen treeniä / peliä</span>
+            {preRating !== null && <span className="text-sm opacity-90">✓ {preRating}/10</span>}
+          </div>
+          <div className="text-xs font-normal opacity-90 mt-1">
+            {preRating === null ? "Katso päivän haaste ja tunnustele" : "Voit muokata"}
+          </div>
+        </button>
+
+        <button
+          onClick={onAfterPractice}
+          className="w-full rounded-2xl px-6 py-5 font-display text-xl text-amber-900 shadow-xl transition bg-white border-2 border-amber-300 active:translate-y-0.5"
+        >
+          <div className="flex items-center justify-center gap-2">
+            <span>📝</span>
+            <span>Treenin / pelin jälkeen</span>
+          </div>
+          <div className="text-xs font-normal text-amber-700 mt-1">
+            Kirjaa miten meni
+          </div>
+        </button>
+      </div>
+
+      <p className="mt-4 text-center text-sm text-amber-800/70">Voit täyttää saman päivän aikana useamman kerran.</p>
+
+      {showQuickChange && (
+        <QuickChangeModal
+          player={player}
+          onSave={(updates) => { onUpdatePlayer(updates); setShowQuickChange(false); }}
+          onClose={() => setShowQuickChange(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// PrePractice — uusi ruutu jossa lapsi näkee päivän haasteen ja täyttää rohkeusmittarin
+// ennen treeniä/peliä. Tukee mentaalista valmistautumista.
+function PrePractice({ player, mission, theme, preRating, onSetPreRating, onBack, onDone }) {
+  const smallestStep = getSmallestStepForMission(mission.text);
+  const ratingLabels = {
+    0: "Ei yhtään",
+    1: "Hyvin rento",
+    2: "Lähes rento",
+    3: "Vähän",
+    4: "Hieman",
+    5: "Keskitasoa",
+    6: "Aika paljon",
+    7: "Paljon",
+    8: "Tosi paljon",
+    9: "Erittäin paljon",
+    10: "Tosi paljon",
+  };
+
+  return (
+    <div className="animate-pop">
+      <div className="mb-4 flex items-center justify-start">
+        <button onClick={onBack} className="flex items-center gap-1 rounded-full bg-white/70 px-3 py-1.5 text-sm font-bold text-amber-800 shadow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Etusivulle
+        </button>
+      </div>
+
+      {/* PÄIVÄN ROHKEUSHAASTE */}
+      <div className={`mb-5 rounded-[2rem] bg-gradient-to-br ${theme.gradient} p-7 text-white shadow-2xl relative overflow-hidden border-4 border-white/40`}>
+        <div className="absolute -right-2 -top-2 text-8xl opacity-20">
+          {MISSION_ICONS[mission.type] || "🎯"}
+        </div>
+        <div className="relative">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/25 px-4 py-2 text-xs font-extrabold uppercase tracking-wider">
+            <span className="text-lg">{MISSION_ICONS[mission.type] || "🎯"}</span>
+            <span>Päivän rohkeushaaste</span>
+          </div>
+          <p className="font-display text-2xl leading-snug" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
+            {mission.text}
+          </p>
+          <div className="mt-5 rounded-2xl bg-white/20 px-4 py-3 text-center border border-white/25">
+            <p className="font-display text-base">
+              Yritys riittää. Onnistua ei tarvitse.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* PIENIN MAHDOLLINEN YRITYS */}
+      <div className="mb-5 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4 shadow">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-lg">🌱</span>
+          <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-800">Pienin mahdollinen yritys</div>
+        </div>
+        <p className="font-display text-base leading-snug text-emerald-950">{smallestStep}</p>
+        <p className="text-[11px] italic text-emerald-800/70 mt-2">Jos isompi tuntuu liian vaikealta, tämä riittää.</p>
+      </div>
+
+      {/* ROHKEUSMITTARI */}
+      <div className="mb-5 rounded-2xl border-2 border-amber-300 bg-white p-5 shadow">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-lg">🎯</span>
+          <div className="font-display text-base text-amber-900">Rohkeusmittari</div>
+        </div>
+        <p className="text-base text-amber-800/90 mb-3">Kuinka paljon päivän haaste jännittää nyt?</p>
+
+        <div className="grid grid-cols-11 gap-1">
+          {[0,1,2,3,4,5,6,7,8,9,10].map(n => (
+            <button
+              key={n}
+              onClick={() => onSetPreRating(n)}
+              className={`aspect-square rounded-lg text-xs font-bold transition-all ${
+                preRating === n
+                  ? `bg-gradient-to-br ${theme.gradient} text-white shadow-lg scale-110`
+                  : "bg-white border border-amber-200 text-amber-800 active:bg-amber-50"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-between mt-1 text-[10px] text-amber-700/60">
+          <span>0 ei yhtään</span>
+          <span>10 tosi paljon</span>
+        </div>
+
+        {preRating !== null && (
+          <div className="mt-4 rounded-xl bg-amber-50 p-3 text-center animate-pop">
+            <span className="font-display text-xl text-amber-900">{preRating}/10</span>
+            <span className="font-display text-xl text-amber-900"> — {ratingLabels[preRating]}</span>
+          </div>
+        )}
+
+        <div className="mt-4 rounded-xl bg-amber-50 p-3">
+          <p className="font-display text-base leading-snug text-amber-950">
+            Jännitys saa tulla mukaan. <strong>Tarkoitus ei ole saada sitä pois, vaan yrittää silti.</strong>
+          </p>
+        </div>
+      </div>
+
+      <BigButton theme={theme} onClick={onDone}>
+        {preRating !== null ? "Olen valmis matkaan 🚀" : "Olen valmis matkaan (ohita mittari) 🚀"}
+      </BigButton>
+
+      <p className="mt-4 text-center text-xs text-amber-800/60">Mittari on vapaaehtoinen. Voit palata muokkaamaan.</p>
+    </div>
+  );
+}
+
+// Pikavaihtomodaali — lapsi voi vaihtaa hahmoa ja väriä itse
+function QuickChangeModal({ player, onSave, onClose }) {
+  const [avatar, setAvatar] = useState(player.avatar);
+  const [themeKey, setThemeKey] = useState(player.theme);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-3xl bg-gradient-to-b from-orange-50 via-amber-50 to-rose-50 p-5 shadow-2xl animate-pop-big max-h-[90vh] overflow-y-auto"
+      >
+        <h2 className="font-display text-2xl text-amber-900 mb-1 text-center">Vaihda hahmoa</h2>
+        <p className="text-sm text-amber-800/70 mb-4 text-center">{player.name}, valitse oma suosikki!</p>
+
+        {/* Hahmo */}
+        <div className="mb-4 rounded-2xl border-2 border-amber-300 bg-white p-3 shadow">
+          <div className="text-xs font-extrabold uppercase tracking-wider text-orange-700 mb-2 px-1">Hahmo</div>
+          <div className="grid grid-cols-4 gap-2">
+            {AVATARS.map(a => (
+              <button
+                key={a.id}
+                onClick={() => setAvatar(a.id)}
+                className={`p-2 rounded-xl border-2 flex flex-col items-center gap-1 transition ${avatar === a.id ? "border-orange-500 bg-orange-50 ring-2 ring-orange-200" : "border-amber-200 bg-white"}`}
+              >
+                <div className="text-3xl">{a.emoji}</div>
+                <div className="text-[10px] font-bold text-amber-900">{a.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Väri */}
+        <div className="mb-5 rounded-2xl border-2 border-amber-300 bg-white p-3 shadow">
+          <div className="text-xs font-extrabold uppercase tracking-wider text-orange-700 mb-2 px-1">Väri</div>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(THEMES).map(([key, t]) => (
+              <button
+                key={key}
+                onClick={() => setThemeKey(key)}
+                className={`p-3 rounded-xl bg-gradient-to-br ${t.gradient} text-white font-display text-sm shadow ${themeKey === key ? "ring-4 ring-amber-400" : ""}`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-2xl bg-amber-100 text-amber-900 font-display py-3 active:translate-y-0.5"
+          >
+            Peruuta
+          </button>
+          <button
+            onClick={() => onSave({ avatar, theme: themeKey })}
+            className="flex-1 rounded-2xl bg-gradient-to-br from-orange-500 to-rose-500 text-white font-display py-3 shadow active:translate-y-0.5"
+          >
+            Tallenna
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Mood({ player, value, onPick, onNext, onBack, onSkip, theme }) {
+  const moods = [{ key: "😄", label: "Hyvältä" }, { key: "🙂", label: "Ihan ok:lta" }, { key: "😬", label: "Vähän jännitti" }, { key: "😤", label: "Harmitti" }, { key: "🦁", label: "Olin rohkea" }];
+  return (
+    <div className="animate-pop">
+      <StepNav onBack={onBack} onSkip={onSkip} step={1} total={4} />
+      <h2 className="font-display mb-1 text-3xl text-amber-900">{player.name}, miltä tänään tuntui?</h2>
+      <p className="mb-5 text-amber-800/70">Valitse fiilis. Ei ole oikeaa vastausta.</p>
+      <div className="space-y-3">
+        {moods.map((m) => (
+          <OptionButton key={m.key} theme={theme} selected={value === m.key} anySelected={!!value} onClick={() => onPick(m.key)}>
+            <span className="text-4xl">{m.key}</span><span className="font-display text-xl text-amber-900">{m.label}</span>
+          </OptionButton>
+        ))}
+      </div>
+      {value && <EncourageBox reply={MOOD_REPLIES[value]} />}
+
+      <div className="mt-6"><BigButton theme={theme} onClick={onNext} disabled={!value}>Jatka →</BigButton></div>
+    </div>
+  );
+}
+
+// PostPracticeMeter — jälkeen-mittari joka näkyy MissionCheckissä.
+// Vertaa lapsen ennen treeniä tallennettua arvoa nyt tunnettuun.
+function PostPracticeMeter({ session, setSession, theme, preRating }) {
+  const setPost = (v) => setSession({ ...session, postPracticeAnxiety: v });
+  const post = session.postPracticeAnxiety;
+
+  const labels = {
+    0: "Ei jännittänyt",
+    1: "Hyvin rento",
+    2: "Lähes rento",
+    3: "Vähän jännitti",
+    4: "Jännitti hieman",
+    5: "Keskitasoa",
+    6: "Jännitti aika paljon",
+    7: "Jännitti paljon",
+    8: "Jännitti tosi paljon",
+    9: "Erittäin jännittävä",
+    10: "Tosi paljon",
+  };
+
+  return (
+    <div className="mt-5 rounded-2xl border-2 border-amber-200 bg-white p-4 shadow">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-lg">🎯</span>
+        <div className="font-display text-base text-amber-900">Rohkeusmittari</div>
+        <span className="text-[10px] uppercase tracking-wider text-amber-700/60 font-bold">vapaaehtoinen</span>
+      </div>
+      <p className="text-base text-amber-800/90 mb-3">Paljonko haaste jännitti lopuksi?</p>
+
+      <div className="grid grid-cols-11 gap-1">
+        {[0,1,2,3,4,5,6,7,8,9,10].map(n => (
+          <button
+            key={n}
+            onClick={() => setPost(n)}
+            className={`aspect-square rounded-lg text-xs font-bold transition-all ${
+              post === n
+                ? `bg-gradient-to-br ${theme.gradient} text-white shadow-lg scale-110`
+                : "bg-white border border-amber-200 text-amber-800 active:bg-amber-50"
+            }`}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+      <div className="flex justify-between mt-1 text-[10px] text-amber-700/60">
+        <span>0 ei yhtään</span>
+        <span>10 tosi paljon</span>
+      </div>
+
+      {post !== null && (
+        <div className="mt-3 text-center animate-pop">
+          <span className="font-display text-xl text-amber-900">{post}/10 — {labels[post]}</span>
+        </div>
+      )}
+
+      {/* Vertailu — vain jos sekä ennakkomittari että jälkeen-mittari on täytetty */}
+      {post !== null && preRating !== null && preRating !== undefined && (
+        post < preRating ? (
+          /* LASKU — korostettu, koska tämä on materiaalin tärkein oivallus */
+          <div className="mt-4 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 border-2 border-emerald-400 p-5 text-center animate-pop shadow">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <span className="font-display text-4xl text-emerald-400">{preRating}</span>
+              <span className="text-2xl text-emerald-500">→</span>
+              <span className="font-display text-5xl text-emerald-700">{post}</span>
+              <span className="self-start rounded-full bg-emerald-500 px-2.5 py-1 text-sm font-extrabold text-white">↓ {preRating - post}</span>
+            </div>
+            <p className="font-display text-base leading-snug text-emerald-900">
+              Näitkö? Jännitys pieneni, kun uskalsit kokeilla. <strong>Juuri näin se toimii.</strong>
+            </p>
+          </div>
+        ) : post === preRating ? (
+          <div className="mt-4 rounded-2xl bg-emerald-50 border-2 border-emerald-200 p-4 text-center">
+            <p className="font-display text-base leading-snug text-emerald-900">
+              <strong>Jännitys pysyi mukana — ja sinäkin pysyit mukana.</strong> Se on rohkeutta.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-2xl bg-sky-50 border-2 border-sky-200 p-4 text-center">
+            <p className="font-display text-base leading-snug text-sky-900">
+              <strong>Joskus jännitys kasvaa hetkessä.</strong> Tärkeintä on, että huomasit sen ja olit mukana. Se laskee aina myöhemmin.
+            </p>
+          </div>
+        )
+      )}
+
+      {/* Lempeä palaute jos jompikumpi puuttuu */}
+      {post !== null && (preRating === null || preRating === undefined) && (
+        <div className="mt-4 rounded-2xl bg-sky-50 border-2 border-sky-200 p-4 text-center">
+          <p className="font-display text-base leading-snug text-sky-900">
+            <strong>Hyvä että pysähdyit miettimään.</strong> Jännityksen huomaaminenkin on harjoittelua.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Moment({ session, setSession, onNext, onBack, onSkip, theme }) {
+  const options = [
+    { v: "scared", emoji: "😬", label: "Menin tilanteeseen vaikka jännitti" },
+    { v: "steal", emoji: "🛡️", label: "Yritin pallonriistoa" },
+    { v: "trick", emoji: "🌀", label: "Yritin harhautusta" },
+    { v: "run", emoji: "⚡", label: "Kuljetin rohkeasti" },
+    { v: "again", emoji: "🔁", label: "Jatkoin virheen jälkeen" },
+    { v: "fail", emoji: "😅", label: "Mokasin, mutta se ei haitannut" },
+    { v: "newthing", emoji: "🌱", label: "Kokeilin jotain uutta" },
+  ];
+  return (
+    <div className="animate-pop">
+      <StepNav onBack={onBack} onSkip={onSkip} step={2} total={4} />
+      <h2 className="font-display mb-1 text-3xl text-amber-900">Päivän rohkein hetki</h2>
+      <p className="mb-5 text-amber-800/70">Mieti yksi hetki tämän päivän treenistä. Ei tarvitse olla iso juttu.</p>
+      <div className="space-y-2.5">
+        {options.map((o) => (
+          <OptionButton key={o.v} theme={theme} selected={session.bravestKind === o.v} anySelected={!!session.bravestKind} onClick={() => setSession({ ...session, bravestMoment: o.label, bravestKind: o.v })}>
+            <span className="text-3xl">{o.emoji}</span><span className="font-display text-base text-amber-900">{o.label}</span>
+          </OptionButton>
+        ))}
+      </div>
+      {session.bravestKind && <EncourageBox reply={MOMENT_REPLIES[session.bravestKind]} />}
+      <div className="mt-6"><BigButton theme={theme} onClick={onNext} disabled={!session.bravestKind}>Jatka →</BigButton></div>
+    </div>
+  );
+}
+
+function Again({ session, setSession, onNext, onBack, onSkip, theme }) {
+  const options = [{ v: "yes", emoji: "🔁", label: "Kyllä, jatkoin" }, { v: "no", emoji: "🌱", label: "En tänään" }, { v: "dontremember", emoji: "🤔", label: "En muista" }];
+  return (
+    <div className="animate-pop">
+      <StepNav onBack={onBack} onSkip={onSkip} step={3} total={4} />
+      <h2 className="font-display mb-1 text-3xl text-amber-900">Jatkoitko virheen jälkeen?</h2>
+      <p className="mb-5 text-amber-800/70">Mokat kuuluvat peliin. Vastaa rehellisesti.</p>
+      <div className="space-y-2.5">
+        {options.map((o) => (
+          <OptionButton key={o.v} theme={theme} selected={session.continuedAfterMistake === o.v} anySelected={!!session.continuedAfterMistake} onClick={() => setSession({ ...session, continuedAfterMistake: o.v })}>
+            <span className="text-3xl">{o.emoji}</span><span className="font-display text-base text-amber-900">{o.label}</span>
+          </OptionButton>
+        ))}
+      </div>
+      {session.continuedAfterMistake && <EncourageBox reply={AGAIN_REPLIES[session.continuedAfterMistake]} />}
+      <div className="mt-6"><BigButton theme={theme} onClick={onNext} disabled={!session.continuedAfterMistake}>Jatka →</BigButton></div>
+    </div>
+  );
+}
+
+function MissionCheck({ mission, theme, session, setSession, preRating, onNext, onBack, onSkip }) {
+  const options = [{ v: "yes", label: "Kyllä", emoji: "✅" }, { v: "no", label: "En tänään", emoji: "🌱" }, { v: "dontremember", label: "En muista", emoji: "🤔" }];
+  return (
+    <div className="animate-pop">
+      <StepNav onBack={onBack} onSkip={onSkip} step={4} total={4} />
+      <div className={`mb-5 rounded-2xl bg-gradient-to-br ${theme.gradient} p-5 text-white shadow-xl`}>
+        <div className="text-xs font-bold uppercase tracking-wider opacity-90 flex items-center gap-1">
+          <span>{MISSION_ICONS[mission.type] || "🎯"}</span>
+          <span>Päivän rohkeushaaste oli</span>
+        </div>
+        <p className="font-display mt-1 text-xl leading-snug">{mission.text}</p>
+      </div>
+      <h2 className="font-display mb-1 text-2xl text-amber-900">Tulitko yrittäneeksi?</h2>
+      <p className="mb-3 text-sm text-amber-800/70">Yritys riittää. Onnistumista ei tarvitse.</p>
+      <div className="space-y-2.5">
+        {options.map((o) => (
+          <OptionButton key={o.v} theme={theme} selected={session.missionAttempted === o.v} anySelected={!!session.missionAttempted} onClick={() => setSession({ ...session, missionAttempted: o.v })}>
+            <span className="text-3xl">{o.emoji}</span><span className="font-display text-base text-amber-900">{o.label}</span>
+          </OptionButton>
+        ))}
+      </div>
+      {session.missionAttempted && <EncourageBox reply={MISSION_REPLIES[session.missionAttempted]} />}
+
+      {/* PostPracticeMeter — näkyy missionAttempted-valinnan jälkeen */}
+      {session.missionAttempted && (
+        <PostPracticeMeter session={session} setSession={setSession} theme={theme} preRating={preRating} />
+      )}
+
+      <div className="mt-6"><BigButton theme={theme} onClick={onNext} disabled={!session.missionAttempted}>Katso päivän rohkeus →</BigButton></div>
+    </div>
+  );
+}
+
+// MissionReflect — näkyy vain kun lapsi vastasi "En tänään"
+// Auttaa lasta tunnistamaan, miksi tehtävä tuntui vaikealta. Itsetuntemus on rohkeuden perusta.
+function MissionReflect({ session, setSession, onNext, onBack, theme }) {
+  const options = [
+    { v: "jannitti", emoji: "😬", label: "Jännitti" },
+    { v: "harmitti", emoji: "😤", label: "Harmitti" },
+    { v: "vasytti",  emoji: "😴", label: "Väsytti" },
+    { v: "entieda",  emoji: "🤷", label: "En tiedä" },
+  ];
+  return (
+    <div className="animate-pop">
+      <div className="mb-4 flex items-center justify-start">
+        <button onClick={onBack} className="flex items-center gap-1 rounded-full bg-white/70 px-3 py-1.5 text-sm font-bold text-amber-800 shadow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Edellinen
+        </button>
+      </div>
+      <h2 className="font-display mb-1 text-2xl text-amber-900">Mikä teki yrittämisestä vaikeaa?</h2>
+      <p className="mb-5 text-sm text-amber-800/70">Tunnistaminen on rohkeuden ensimmäinen askel.</p>
+      <div className="space-y-2.5">
+        {options.map((o) => (
+          <OptionButton key={o.v} theme={theme} selected={session.missionDifficulty === o.v} anySelected={!!session.missionDifficulty} onClick={() => setSession({ ...session, missionDifficulty: o.v })}>
+            <span className="text-3xl">{o.emoji}</span>
+            <span className="font-display text-base text-amber-900">{o.label}</span>
+          </OptionButton>
+        ))}
+      </div>
+      {session.missionDifficulty && <EncourageBox reply={REFLECT_REPLIES[session.missionDifficulty]} />}
+
+      {/* Pieni huomisen askel kun valinta on tehty */}
+      {session.missionDifficulty && (
+        <div className="mt-5 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 p-4 text-center">
+          <p className="font-display text-base text-amber-950">Huomenna riittää <span className="border-b-2 border-amber-400">yksi pieni yritys</span>.</p>
+        </div>
+      )}
+
+      <div className="mt-6">
+        <BigButton theme={theme} onClick={onNext} disabled={!session.missionDifficulty}>Katso päivän rohkeus →</BigButton>
+      </div>
+    </div>
+  );
+}
+
+// LadderPractice — pelkoportaikon oma sivu. Lapsi näkee nykyisen askelman ja kirjaa
+// yrityksen (yksi leijona per päivä). Erillinen sivu tekee portaikosta tietoisen
+// harjoituksen, ei treenikirjauksen liitteen.
+function LadderPractice({ player, theme, alreadyLoggedToday, onAddRep, onBack }) {
+  const [justLogged, setJustLogged] = useState(false);
+
+  if (!player.ladder) {
+    return (
+      <div className="animate-pop">
+        <div className="mb-4 flex items-center justify-start">
+          <button onClick={onBack} className="flex items-center gap-1 rounded-full bg-white/70 px-3 py-1.5 text-sm font-bold text-amber-800 shadow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Etusivulle
+          </button>
+        </div>
+        <div className="rounded-2xl border-2 border-violet-200 bg-violet-50 p-6 text-center">
+          <div className="text-4xl mb-2">🪜</div>
+          <p className="font-display text-lg text-violet-950 mb-1">Ei aktiivista harjoitusta</p>
+          <p className="text-sm text-violet-800/70">Vanhempi voi aloittaa pelkoportaikon asetuksista.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const template = LADDER_TEMPLATES.find(t => t.id === player.ladder.id);
+  if (!template) return null;
+  const stepIdx = player.ladder.currentStep;
+  const stepText = template.steps[stepIdx];
+  const reps = player.ladder.repsPerStep[stepIdx] || 0;
+  const logged = alreadyLoggedToday || justLogged;
+
+  const handleLog = () => {
+    onAddRep();
+    setJustLogged(true);
+  };
+
+  return (
+    <div className="animate-pop">
+      <div className="mb-4 flex items-center justify-start">
+        <button onClick={onBack} className="flex items-center gap-1 rounded-full bg-white/70 px-3 py-1.5 text-sm font-bold text-amber-800 shadow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Etusivulle
+        </button>
+      </div>
+
+      <div className="mb-5 rounded-[2rem] bg-gradient-to-br from-violet-500 to-purple-600 p-7 text-white shadow-2xl relative overflow-hidden border-4 border-white/40">
+        <div className="absolute -right-2 -top-2 text-8xl opacity-20">🪜</div>
+        <div className="relative">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/25 px-4 py-2 text-xs font-extrabold uppercase tracking-wider">
+            <span>{template.emoji}</span>
+            <span>Sinun harjoituksesi</span>
+          </div>
+          <div className="text-xs opacity-90 mb-1">{template.title} — askelma {stepIdx + 1}/{template.steps.length}</div>
+          <p className="font-display text-2xl leading-snug" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>{stepText}</p>
+        </div>
+      </div>
+
+      {/* Leijonat */}
+      <div className="mb-5 rounded-2xl border-2 border-violet-200 bg-white p-5 shadow text-center">
+        <div className="text-xs font-bold uppercase tracking-wider text-violet-700 mb-2">Rohkeuden leijonat</div>
+        <div className="flex items-center justify-center gap-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <span key={i} className="text-3xl">{i < reps ? "🦁" : "⚪"}</span>
+          ))}
+        </div>
+        <p className="text-[11px] italic text-violet-800/70 mt-3">Jokainen yritys on yksi leijona. Yritys riittää — ei tarvitse onnistua täydellisesti.</p>
+      </div>
+
+      {/* Kirjausnappi */}
+      {logged ? (
+        <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-5 text-center animate-pop">
+          <div className="text-3xl mb-1">🦁</div>
+          <p className="font-display text-lg text-emerald-900">Hienoa! Kirjattu tänään.</p>
+          <p className="text-sm text-emerald-800/70 mt-1">Jokainen yritys vie eteenpäin. Nähdään taas seuraavalla kerralla.</p>
+        </div>
+      ) : (
+        <>
+          <BigButton theme={theme} onClick={handleLog}>Yritin tänään tätä 🦁</BigButton>
+          <p className="mt-3 text-center text-xs text-amber-800/60">Paina vain jos oikeasti yritit. Yksi yritys päivässä riittää.</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Result({ player, session, settings, surprise, newAchievements, charLevel, charLeveledUp, theme, onDone }) {
+  const tip = PARENT_TIPS[Math.floor(Math.random() * PARENT_TIPS.length)];
+  const titleEmoji = session.title.split(" ")[0];
+  const titleText = session.title.split(" ").slice(1).join(" ");
+  const nothingHappened = !session.bravestMoment && !charLeveledUp && newAchievements.length === 0 && !surprise;
+
+  return (
+    <div className="animate-pop">
+      <div className={`relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br ${theme.gradient} p-7 text-center text-white shadow-xl`}>
+        <div className="pointer-events-none absolute right-3 top-3 text-2xl animate-sparkle">✨</div>
+        <div className="pointer-events-none absolute left-3 top-3 text-2xl animate-sparkle">✨</div>
+        <div className="relative">
+          <div className="text-xs font-bold uppercase tracking-wider opacity-90">{player.name}, päivän titteli</div>
+          <div className="mt-3 text-7xl">{titleEmoji}</div>
+          <div className="font-display mt-2 text-3xl">{titleText}</div>
+          <p className="font-display mt-3 text-base opacity-95">
+            {session.bravestMoment
+              ? <>Tänään <span className="border-b-2 border-white/60">kasvatit rohkeutta</span>, koska yritit.</>
+              : <>Hyvä kun avasit pelin. <span className="border-b-2 border-white/60">Hyvää huomista</span>!</>
+            }
+          </p>
+        </div>
+      </div>
+
+      {charLeveledUp && (
+        <div className="animate-pop-big mb-5 rounded-2xl border-[3px] border-amber-500 bg-gradient-to-br from-amber-100 to-yellow-100 p-5 text-center shadow-xl">
+          <div className="text-xs font-extrabold uppercase tracking-wider text-amber-800">Hahmosi kasvoi!</div>
+          <div className="mt-2 text-6xl animate-bounce-once animate-glow">{charLevel.emoji}</div>
+          <div className="font-display mt-2 text-xl text-amber-950">{charLevel.title}</div>
+          <div className="mt-1 text-sm text-amber-800">{charLevel.desc}</div>
+        </div>
+      )}
+
+      {newAchievements.length > 0 && (
+        <div className="animate-pop-big mb-5 rounded-2xl border-[3px] border-violet-400 bg-gradient-to-br from-violet-50 to-violet-100 p-5 shadow-xl">
+          <div className="mb-2 text-xs font-extrabold uppercase tracking-wider text-violet-800">🎉 Uusi saavutus avautui</div>
+          {newAchievements.map(a => (
+            <div key={a.id} className="mt-2">
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">{a.emoji}</div>
+                <div>
+                  <div className="font-display text-lg text-violet-950">{a.title}</div>
+                  <div className="text-sm text-violet-900/80">{a.sub}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+          <p className="mt-3 text-sm italic text-violet-900">Tämä on oikeaa rohkeutta.</p>
+        </div>
+      )}
+
+      {surprise && (
+        <div className="animate-pop-big mb-5 rounded-2xl border-[3px] border-rose-400 bg-gradient-to-br from-rose-50 to-pink-100 p-5 text-center shadow-xl">
+          <div className="text-xs font-extrabold uppercase tracking-wider text-rose-800">🎁 Yllätys!</div>
+          <div className="mt-2 text-5xl animate-bounce-once">{surprise.emoji}</div>
+          <p className="font-display mt-2 text-base leading-snug text-rose-950">{surprise.text}</p>
+        </div>
+      )}
+
+      {session.bravestMoment && (
+        <div className="mb-5 rounded-2xl border-2 border-amber-200 bg-white p-5 shadow">
+          <div className="text-xs font-bold uppercase tracking-wider text-amber-700">Päivän rohkein hetki</div>
+          <p className="font-display mt-1 text-lg text-amber-900">{session.bravestMoment}</p>
+        </div>
+      )}
+      {settings.rewardsOn && (() => {
+        const rt = settings.rewardType || "minutes";
+        if (rt === "minutes") {
+          return session.minutes > 0 ? <RewardCard minutes={session.minutes} parentOnly={settings.rewardsParentOnly} /> : null;
+        }
+        // Muissa tiloissa palkinto annetaan jos lapsi teki jotain rohkeaa
+        const earned = session.bravestMoment || session.missionAttempted === "yes" || session.continuedAfterMistake === "yes";
+        if (!earned) return null;
+        if (rt === "choices") {
+          return <ChoiceRewardCard text={getChoiceReward(player.history || [])} parentOnly={settings.rewardsParentOnly} />;
+        }
+        if (rt === "weekly") {
+          return <ChoiceRewardCard text={getSmallReward(player.history || [])} parentOnly={settings.rewardsParentOnly} />;
+        }
+        return null; // "growth" — hahmon kasvu näkyy jo muualla, ei erillistä palkintokorttia
+      })()}
+
+      {nothingHappened && (
+        <div className="mb-5 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 p-5 text-center">
+          <p className="font-display text-base text-amber-950">Tänäänkin uskalsit yrittää. Se riittää.</p>
+        </div>
+      )}
+
+      {/* SANO TÄNÄÄN NÄIN — tilanteeseen mukautuva konkreettinen lause vanhemmalle */}
+      <SayTodayCard player={player} session={session} />
+
+      <div className="mb-6 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-5">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-800">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          Vanhemmalle, {player.name}sta
+        </div>
+        <p className="font-display mt-2 text-base leading-snug text-amber-950">Sano ääneen: <span className="text-amber-700">«</span><strong>{tip}</strong><span className="text-amber-700">»</span></p>
+        <p className="mt-2 text-xs italic text-amber-800/70">Yksi lause riittää. Ei tarvitse selittää enempää.</p>
+      </div>
+      <BigButton theme={theme} onClick={onDone}>Valmis 🦁</BigButton>
+    </div>
+  );
+}
+
+// SayTodayCard — tilanteeseen mukautuva konkreettinen lause vanhemmalle.
+// Materiaalin mukaan vanhemman kehu auttaa, mutta sen pitää olla konkreettinen.
+function SayTodayCard({ player, session }) {
+  // Valitse sopiva lause sessio-tietojen perusteella
+  let mainSay = null;
+  if (session.bravestKind === "scared") {
+    mainSay = `Huomasin, että menit tilanteeseen vaikka jännitti. Se oli rohkea teko.`;
+  } else if (session.continuedAfterMistake === "yes") {
+    mainSay = `Hienoa, että jatkoit virheen jälkeen. Se on pelaajan taito.`;
+  } else if (session.missionAttempted === "yes") {
+    mainSay = `Huomasin, että uskalsit yrittää päivän haastetta. Se on tärkeämpää kuin onnistuminen.`;
+  } else if (session.bravestKind === "newthing") {
+    mainSay = `Huomasin, että uskalsit kokeilla jotain uutta. Se vaatii rohkeutta.`;
+  } else if (session.missionAttempted === "no") {
+    mainSay = `Hyvä että huomasit mikä oli vaikeaa. Mietitään ensi kerralle pienempi askel.`;
+  } else if (session.bravestKind === "again") {
+    mainSay = `Hienoa, että jatkoit virheen jälkeen. Sitkeys on rohkeutta.`;
+  } else {
+    mainSay = `Hyvä että avasit pelin tänään. Pysähtyminen ja huomaaminen on jo askel.`;
+  }
+
+  return (
+    <div className="mb-4 rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 shadow">
+      <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-emerald-800 mb-2">
+        <span className="text-base">💬</span>
+        <span>Sano tänään näin</span>
+      </div>
+      <p className="font-display text-base leading-snug text-emerald-950">
+        <span className="text-emerald-700">«</span>{mainSay}<span className="text-emerald-700">»</span>
+      </p>
+
+      {/* Pieni varoitusosio — mitä EI kannata sanoa */}
+      <details className="mt-4">
+        <summary className="text-[11px] font-bold uppercase tracking-wider text-emerald-800/70 cursor-pointer">⚠️ Ole varovainen näiden kanssa</summary>
+        <div className="mt-2 space-y-1 text-xs text-emerald-950/80 leading-snug">
+          <p>• «Ei siinä mitään pelättävää ole.»</p>
+          <p>• «Mikset vain mennyt?»</p>
+          <p>• «Olisit ollut rohkeampi.»</p>
+          <p>• «Ei se noin vaikeaa ole.»</p>
+          <p className="italic text-[11px] mt-2 text-emerald-800/70">Nämä voivat vahingossa mitätöidä lapsen tunteen, vaikka tarkoitus on hyvä.</p>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function RewardCard({ minutes, parentOnly }) {
+  const [revealed, setRevealed] = useState(!parentOnly);
+  if (!revealed) {
+    return (
+      <div className="mb-5 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/60 p-5 text-center">
+        <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">Vanhemmalle</div>
+        <button onClick={() => setRevealed(true)} className="mt-2 rounded-xl bg-emerald-600 px-5 py-3 font-display text-base text-white shadow">🔒 Näytä päivän palkinto</button>
+        <p className="mt-2 text-xs italic text-emerald-900/70">Avaa vain, jos haluat näyttää lapselle.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="animate-pop mb-5 rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100 p-5 shadow">
+      <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">Ansaittu palkinto</div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="font-display text-5xl text-emerald-700">{minutes}</span>
+        <span className="font-display text-lg text-emerald-900">min padiaikaa</span>
+      </div>
+      <p className="font-display mt-2 text-sm text-emerald-900">Koska <span className="border-b-2 border-emerald-400">uskalsit yrittää</span>.</p>
+    </div>
+  );
+}
+
+// ChoiceRewardCard — ei-materiaalinen palkinto (pieni valinta) padiajan sijaan.
+function ChoiceRewardCard({ text, parentOnly }) {
+  const [revealed, setRevealed] = useState(!parentOnly);
+  if (!revealed) {
+    return (
+      <div className="mb-5 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/60 p-5 text-center">
+        <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">Vanhemmalle</div>
+        <button onClick={() => setRevealed(true)} className="mt-2 rounded-xl bg-emerald-600 px-5 py-3 font-display text-base text-white shadow">🎁 Näytä päivän palkinto</button>
+        <p className="mt-2 text-xs italic text-emerald-900/70">Avaa vain, jos haluat näyttää lapselle.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="animate-pop mb-5 rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100 p-5 shadow">
+      <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">Ansaittu palkinto</div>
+      <div className="mt-2 flex items-start gap-3">
+        <span className="text-3xl">🎁</span>
+        <p className="font-display text-lg leading-snug text-emerald-900">{text}</p>
+      </div>
+      <p className="font-display mt-2 text-sm text-emerald-900">Koska <span className="border-b-2 border-emerald-400">uskalsit yrittää</span>.</p>
+    </div>
+  );
+}
+
+function SettingsScreen({ settings, setSettings, player, padiBalance, weekSessions, onUsePadi, onGrantPadiBonus, onStartLadder, onAdvanceLadder, onStopLadder, onGoBackLadder, onResetStepReps, onRestartCompletedLadder, onBack, onManagePlayers }) {
+  function update(key, value) { setSettings({ ...settings, [key]: value }); }
+  const [tab, setTab] = useState("rewards");
+  const rt = settings.rewardType || "minutes";
+
+  const tabs = [
+    { id: "rewards", label: "Palkinnot", emoji: "🎁" },
+    { id: "ladder", label: "Portaikko", emoji: "🪜" },
+    { id: "tasks", label: "Tehtävät", emoji: "🎯" },
+    { id: "other", label: "Muut", emoji: "⚙️" },
+  ];
+
+  return (
+    <div className="animate-pop">
+      <button onClick={onBack} className="mb-4 flex items-center gap-1 text-sm font-bold text-amber-800">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Takaisin
+      </button>
+      <h2 className="font-display mb-1 text-3xl text-amber-900">Vanhemman asetukset</h2>
+      <p className="mb-4 text-sm text-amber-800/70">Säädä peliä niin, että se ei muutu painostavaksi.</p>
+
+      {/* VÄLILEHDET */}
+      <div className="mb-5 grid grid-cols-4 gap-2">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`rounded-xl px-1 py-2.5 text-center transition ${tab === t.id ? "bg-orange-500 text-white shadow" : "bg-white border border-amber-200 text-amber-800"}`}
+          >
+            <div className="text-lg leading-none">{t.emoji}</div>
+            <div className="text-[10px] font-bold mt-1">{t.label}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* ===== PALKINNOT ===== */}
+      {tab === "rewards" && (
+        <div className="space-y-4">
+          <Toggle label="Palkinnot päällä" desc="Palkinto rohkeista hetkistä." checked={settings.rewardsOn} onChange={(v) => update("rewardsOn", v)} />
+
+          {settings.rewardsOn && (
+            <>
+              <Toggle label="Palkinto vain vanhemmalle" desc="Lapsi ei näe palkintoa automaattisesti — vanhempi avaa sen tulosruudulla." checked={settings.rewardsParentOnly} onChange={(v) => update("rewardsParentOnly", v)} />
+
+              <div className="rounded-2xl border-2 border-amber-300 bg-white p-4 shadow">
+                <div className="font-display text-base text-amber-900 mb-1">Palkintotyyppi</div>
+                <p className="text-xs text-amber-800/70 mb-3">Miten rohkeudesta palkitaan. Voit vaihtaa milloin tahansa.</p>
+                <div className="space-y-2">
+                  {[
+                    { value: "minutes", emoji: "⏱️", label: "Padiaikaa joka kerta", desc: "Minuutteja per kirjaus, kertyvät saldoon" },
+                    { value: "weekly", emoji: "📅", label: "Viikkopalkinto", desc: "Arjessa hahmo kasvaa ja pieni palkinto. Iso padiaika viikon yrittämisestä." },
+                    { value: "choices", emoji: "🎁", label: "Pieniä valintoja", desc: "Esim. valitse illan peli tai ruoka — ei saldoa" },
+                    { value: "growth", emoji: "🦁", label: "Pelkkä hahmon kasvu", desc: "Ei ulkoista palkintoa, vain rohkeuden kasvu" },
+                  ].map(opt => {
+                    const selected = rt === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => update("rewardType", opt.value)}
+                        className={`w-full rounded-xl border-2 p-3 text-left transition ${selected ? "border-orange-500 bg-orange-50" : "border-amber-200 bg-white active:bg-amber-50"}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{opt.emoji}</span>
+                          <span className="font-display text-sm text-amber-900">{opt.label}</span>
+                          {selected && <span className="ml-auto text-orange-600 font-bold">✓</span>}
+                        </div>
+                        <div className="text-[11px] text-amber-800/70 mt-0.5 ml-7">{opt.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* PADIAIKA-TILA: minuuttiasetukset */}
+              {rt === "minutes" && (
+                <>
+                  <NumberRow label="Minuuttia rohkeasta hetkestä" value={settings.minMinutes} onChange={(v) => update("minMinutes", v)} step={5} />
+                  <NumberRow label="Bonus virheen jälkeen jatkamisesta" value={settings.bonusMinutes} onChange={(v) => update("bonusMinutes", v)} step={5} />
+                  <NumberRow label="Päivittäinen maksimi (min)" value={settings.dailyMaxMinutes} onChange={(v) => update("dailyMaxMinutes", v)} step={5} />
+                </>
+              )}
+
+              {/* VIIKKOPALKINTO-TILA */}
+              {rt === "weekly" && (
+                <div className="rounded-2xl border-2 border-sky-300 bg-sky-50 p-4 shadow">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">📅</span>
+                    <div className="font-display text-base text-sky-900">Viikkopalkinto</div>
+                  </div>
+                  <p className="text-[11px] text-sky-800/70 mb-3leading-snug">Arjessa lapsi saa hahmon kasvun ja pienen palkinnon. Kun viikko on yritetty, annat ison padiajan.</p>
+
+                  <div className="rounded-xl bg-white border border-sky-200 p-4 text-center mb-3">
+                    <div className="text-[10px] uppercase tracking-wider text-sky-700/70 font-bold">Tällä viikolla yritetty</div>
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="font-display text-3xl text-sky-700">{weekSessions}</span>
+                      <span className="font-display text-base text-sky-900">/ {settings.weeklyGoal} päivää</span>
+                    </div>
+                  </div>
+
+                  <NumberRow label="Tavoite (päivää / viikko)" value={settings.weeklyGoal} onChange={(v) => update("weeklyGoal", Math.max(1, v))} step={1} />
+                  <div className="h-2" />
+                  <NumberRow label="Viikkopalkinto (min)" value={settings.weeklyRewardMin} onChange={(v) => update("weeklyRewardMin", v)} step={15} />
+
+                  <button
+                    onClick={() => {
+                      if (confirm(`Lisätäänkö ${settings.weeklyRewardMin} min padiaikaa ${player.name}n saldoon viikkopalkintona?`)) {
+                        onGrantPadiBonus(settings.weeklyRewardMin);
+                      }
+                    }}
+                    className={`w-full mt-3 rounded-xl px-4 py-3 font-display text-sm text-white shadow ${weekSessions >= settings.weeklyGoal ? "bg-emerald-600" : "bg-sky-400"}`}
+                  >
+                    {weekSessions >= settings.weeklyGoal ? "🎉 " : ""}Anna viikkopalkinto ({settings.weeklyRewardMin} min)
+                  </button>
+                  {weekSessions >= settings.weeklyGoal
+                    ? <p className="mt-2 text-[11px] italic text-emerald-700 text-center">Viikon tavoite saavutettu — palkinto ansaittu!</p>
+                    : <p className="mt-2 text-[11px] italic text-sky-800/60 text-center">Voit antaa palkinnon myös ennen tavoitetta, jos viikko on mennyt hyvin.</p>}
+                </div>
+              )}
+
+              {/* PADIAIKAPANKKI — näkyy minutes- ja weekly-tilassa */}
+              {(rt === "minutes" || rt === "weekly") && player && (
+                <PadiBank balance={padiBalance} playerName={player.name} onUse={onUsePadi} />
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ===== PORTAIKKO ===== */}
+      {tab === "ladder" && player && (
+        <LadderManager player={player} onStartLadder={onStartLadder} onAdvanceLadder={onAdvanceLadder} onStopLadder={onStopLadder} onGoBackLadder={onGoBackLadder} onResetStepReps={onResetStepReps} onRestartCompletedLadder={onRestartCompletedLadder} />
+      )}
+
+      {/* ===== TEHTÄVÄT ===== */}
+      {tab === "tasks" && (
+        <div className="rounded-2xl border-2 border-amber-300 bg-white p-4 shadow">
+          <div className="font-display text-base text-amber-900 mb-1">Tehtävien painotus</div>
+          <p className="text-xs text-amber-800/70 mb-3">Valitse minkä tyyppisiä tehtäviä halutaan painottaa. Lapsi ei näe valintaa — tehtävät vain suuntautuvat eri tavoin.</p>
+          <div className="grid grid-cols-1 gap-2">
+            {[
+              { value: "balanced",  label: "Tasapainoinen",       emoji: "💪", desc: "Kaikkia tyyppejä tasaisesti" },
+              { value: "defense60", label: "Puolustusta 60 %",    emoji: "🛡️", desc: "Päälle menemistä, riistoja, taistelua" },
+              { value: "defense70", label: "Puolustusta 70 %",    emoji: "🛡️", desc: "Vahvempi puolustuspainotus" },
+              { value: "attack60",  label: "Hyökkäystä 60 %",     emoji: "⚔️", desc: "Harhautuksia, kuljetuksia, spurtteja" },
+              { value: "attack70",  label: "Hyökkäystä 70 %",     emoji: "⚔️", desc: "Vahvempi hyökkäyspainotus" },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => update("focus", opt.value)}
+                className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition ${settings.focus === opt.value ? "border-orange-500 bg-orange-50 ring-2 ring-orange-200" : "border-amber-200 bg-white"}`}
+              >
+                <div className="text-2xl">{opt.emoji}</div>
+                <div className="flex-1">
+                  <div className="font-display text-sm text-amber-900">{opt.label}</div>
+                  <div className="text-[11px] text-amber-800/70">{opt.desc}</div>
+                </div>
+                {settings.focus === opt.value && <span className="text-orange-600 font-bold">✓</span>}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] italic text-amber-800/60">Muutos näkyy seuraavan päivän rohkeushaasteessa.</p>
+        </div>
+      )}
+
+      {/* ===== MUUT ===== */}
+      {tab === "other" && (
+        <div className="space-y-5">
+          <button onClick={onManagePlayers} className="w-full rounded-2xl border-2 border-amber-300 bg-white p-4 shadow text-left flex items-center justify-between">
+            <div>
+              <div className="font-display text-base text-amber-900">Pelaajien hallinta</div>
+              <div className="text-xs text-amber-800/70">Lisää, muokkaa tai poista pelaajia</div>
+            </div>
+            <span className="text-xl">→</span>
+          </button>
+
+          <ParentTrapsCard />
+
+          <div className="rounded-2xl bg-amber-100/60 p-4 text-sm leading-relaxed text-amber-900">
+            <strong className="font-display">Vinkki vanhemmalle:</strong> Tehkää täyttö yhdessä autossa kotimatkalla — älä kuulustele ruudun takana. Yksi lause ääneen riittää. Älä korjaa lapsen muistikuvia. Jos jonain päivänä ei huvita avata, älä avaa.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Vanhemmuuden ansat -kortti, auki/kiinni -toiminnolla
+// Pohjautuu ahdistuksen lyhytintervention vanhemmuuden ansa -materiaaliin
+function ParentTrapsCard() {
+  const [open, setOpen] = useState(false);
+  const traps = [
+    {
+      title: "Vakuuttelu",
+      desc: "Toistuva «kaikki on hyvin» rauhoittelu voi estää lasta oppimasta rauhoittamaan itseään. Vältä toistamasta samaa vakuuttelua useita kertoja samassa tilanteessa.",
+    },
+    {
+      title: "Ylisuojelevuus",
+      desc: "Jos lapsi ei koskaan kohtaa hänelle hankalia tilanteita, luottamus omaan pärjäämiseen ei pääse vahvistumaan. Anna lapsen kokea pieniä epämukavuuksia myös itse.",
+    },
+    {
+      title: "Puolesta tekeminen",
+      desc: "Vaikka olisi nopeampaa tehdä lapsen puolesta, lapsi tarvitsee yrittämisen mahdollisuuden. Auta tukemalla, älä ottamalla tilannetta haltuun.",
+    },
+    {
+      title: "Ankaruus",
+      desc: "«Sen kun menet vaan» tai «ei se ole vaikeaa» voi tuntua lapsesta siltä, että hänen tunteitaan ei ymmärretä. Tunnusta vaikeus, mutta rohkaise yritykseen.",
+    },
+    {
+      title: "Epäjohdonmukaisuus",
+      desc: "Päivästä toiseen vaihteleva suhtautuminen voi sekoittaa lasta. Sopikaa toisen vanhemman kanssa yhtenäisestä linjasta — lempeä mutta jämäkkä.",
+    },
+  ];
+
+  return (
+    <div className="mt-6 rounded-2xl border-2 border-violet-300 bg-violet-50 overflow-hidden shadow">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full p-4 text-left flex items-center justify-between active:bg-violet-100 transition"
+      >
+        <div>
+          <div className="font-display text-base text-violet-900 flex items-center gap-2">
+            <span>🪤</span>
+            <span>Vanhemmuuden ansat</span>
+          </div>
+          <div className="text-[11px] text-violet-800/70 mt-0.5">Tunnista omat — auta lasta paremmin</div>
+        </div>
+        <span className={`text-violet-700 font-bold transition-transform duration-300 ${open ? "rotate-180" : ""}`}>▼</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-3 animate-pop">
+          <p className="text-xs italic text-violet-800/80 leading-relaxed">
+            Lapsen ahdistuksen edessä vanhemmat saattavat huomaamattaan jäädä toistuviin malleihin, jotka ylläpitävät ongelmaa. Tunnistaminen on ensimmäinen askel.
+          </p>
+          {traps.map((t, i) => (
+            <div key={i} className="rounded-xl bg-white p-3 border border-violet-200">
+              <div className="font-display text-sm text-violet-900 mb-1">{i + 1}. {t.title}</div>
+              <div className="text-xs text-violet-950/80 leading-relaxed">{t.desc}</div>
+            </div>
+          ))}
+          <p className="text-[11px] italic text-violet-800/70 mt-2">
+            Useimmat vanhemmat tunnistavat itsensä useammasta ansasta. Se on inhimillistä. Tärkeintä on pyrkiä johdonmukaisuuteen yhdessä toisen vanhemman kanssa.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// LadderManager — vanhemman näkymä pelkoportaikon hallintaan.
+// Näyttää nykyisen tilan, ehdottaa tasonostoa, kertoo portaikon valmistumisesta.
+function LadderManager({ player, onStartLadder, onAdvanceLadder, onStopLadder, onGoBackLadder, onResetStepReps, onRestartCompletedLadder }) {
+  const [showStart, setShowStart] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [showResetMenu, setShowResetMenu] = useState(false);
+  const ladder = player.ladder;
+  const template = ladder ? LADDER_TEMPLATES.find(t => t.id === ladder.id) : null;
+
+  // Tarkista onko nykyinen askelma saavuttanut siirtymäkynnyksen (5 toistoa)
+  const stepIdx = ladder ? ladder.currentStep : 0;
+  const currentReps = ladder ? (ladder.repsPerStep[stepIdx] || 0) : 0;
+  const readyToAdvance = ladder && currentReps >= 5;
+  const isLastStep = template && ladder && stepIdx >= template.steps.length - 1;
+  const canGoBack = ladder && stepIdx > 0;
+  // Lempeä muistutus kun toistoja on jo paljon (8+) eikä ole vielä siirrytty
+  const manyReps = ladder && currentReps >= 8 && !isLastStep;
+
+  // Suodatetaan saatavilla olevat pohjat — ei näytetä jo suoritettuja
+  const completedIds = (player.completedLadders || []).map(c => c.id);
+  const availableTemplates = LADDER_TEMPLATES.filter(t => !completedIds.includes(t.id));
+
+  return (
+    <div className="mt-6 rounded-2xl border-2 border-violet-300 bg-violet-50 p-4 shadow">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-lg">🪜</span>
+        <div className="flex-1">
+          <div className="font-display text-base text-violet-900">Pelkoportaat</div>
+          <div className="text-[11px] text-violet-800/70">Pitkän tähtäimen rohkeustavoite, askelma kerrallaan</div>
+        </div>
+      </div>
+
+      {/* Ei aktiivista portaikkoa */}
+      {!ladder && !showStart && (
+        <div className="space-y-3">
+          <p className="text-sm leading-snug text-violet-950">
+            {(player.completedLadders || []).length > 0
+              ? `${player.name} on suorittanut ${player.completedLadders.length} portaikon. Hieno saavutus.`
+              : `${player.name} ei ole aloittanut portaikkoa. Voitte aloittaa yhdessä.`}
+          </p>
+          <button
+            onClick={() => setShowStart(true)}
+            className="w-full rounded-xl bg-violet-600 px-4 py-3 font-display text-sm text-white shadow active:translate-y-0.5"
+          >
+            ➕ Aloita uusi portaikko
+          </button>
+          {(player.completedLadders || []).length > 0 && (
+            <button
+              onClick={() => setShowCompleted(!showCompleted)}
+              className="w-full text-xs text-violet-700 underline"
+            >
+              {showCompleted ? "Piilota" : "Näytä"} suoritetut portaikot ({player.completedLadders.length})
+            </button>
+          )}
+          {showCompleted && (
+            <div className="space-y-2 mt-2">
+              {(player.completedLadders || []).map((c, i) => {
+                const t = LADDER_TEMPLATES.find(tt => tt.id === c.id);
+                if (!t) return null;
+                return (
+                  <div key={i} className="rounded-xl bg-white p-3 border border-violet-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span>{t.emoji}</span>
+                      <span className="font-display text-sm text-violet-900">{t.title}</span>
+                      <span className="ml-auto text-[10px] text-violet-700/60">✓ valmis</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Aloitetaanko portaikko «${t.title}» uudelleen? Voi olla hyödyllistä kertauksena tai uudessa tilanteessa (esim. uusi joukkue, kausi).`)) {
+                          onRestartCompletedLadder(t.id);
+                        }
+                      }}
+                      className="w-full text-[11px] text-violet-700 underline"
+                    >
+                      🔁 Aloita uudelleen
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pohjavalikoima portaikon aloittamiseen */}
+      {!ladder && showStart && (
+        <div className="space-y-2">
+          <p className="text-xs italic text-violet-800 leading-relaxed mb-2">
+            Valitse pohja, joka sopii {player.name}n nykyiseen rohkeustarpeeseen. Voitte vaihtaa myöhemmin.
+          </p>
+          {availableTemplates.map(t => (
+            <button
+              key={t.id}
+              onClick={() => {
+                if (confirm(`Aloita portaikko «${t.title}»? ${player.name} näkee sen heti etusivulla.`)) {
+                  onStartLadder(t.id);
+                  setShowStart(false);
+                }
+              }}
+              className="w-full rounded-xl bg-white border border-violet-200 p-3 text-left active:bg-violet-100 transition"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-base">{t.emoji}</span>
+                <span className="font-display text-sm text-violet-900">{t.title}</span>
+              </div>
+              <p className="text-[11px] text-violet-800/70 leading-snug">Tavoite: {t.goal}</p>
+              <p className="text-[10px] text-violet-700/60 mt-1">{t.steps.length} askelmaa</p>
+            </button>
+          ))}
+          <button
+            onClick={() => setShowStart(false)}
+            className="w-full text-xs text-violet-700 underline mt-2"
+          >
+            Peruuta
+          </button>
+        </div>
+      )}
+
+      {/* Aktiivinen portaikko */}
+      {ladder && template && (
+        <div className="space-y-3">
+          <div className="rounded-xl bg-white p-3 border border-violet-200">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-base">{template.emoji}</span>
+              <span className="font-display text-sm text-violet-900">{template.title}</span>
+            </div>
+            <p className="text-[11px] text-violet-800/70 leading-snug mb-3">Tavoite: {template.goal}</p>
+            <div className="space-y-1.5">
+              {template.steps.map((step, i) => {
+                const reps = ladder.repsPerStep[i] || 0;
+                const isPast = i < stepIdx;
+                const isCurrent = i === stepIdx;
+                return (
+                  <div key={i} className={`flex items-center gap-2 text-xs ${isPast ? "opacity-50" : ""} ${isCurrent ? "font-bold" : ""}`}>
+                    <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${isPast ? "bg-violet-200 text-violet-700" : isCurrent ? "bg-violet-600 text-white" : "bg-amber-100 text-amber-700"}`}>
+                      {isPast ? "✓" : i + 1}
+                    </span>
+                    <span className={`flex-1 leading-snug ${isPast ? "line-through text-violet-700" : isCurrent ? "text-violet-950" : "text-amber-900"}`}>{step}</span>
+                    {isCurrent && (
+                      <span className="text-[10px] text-violet-700">{Array.from({length: 5}).map((_, j) => j < reps ? "🦁" : "·").join("")}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tasonosto-ehdotus */}
+          {readyToAdvance && !isLastStep && (
+            <div className="rounded-xl bg-emerald-50 border-2 border-emerald-300 p-3">
+              <div className="font-display text-sm text-emerald-900 mb-1">🎉 Valmis seuraavaan?</div>
+              <p className="text-xs leading-snug text-emerald-950 mb-2">
+                {player.name} on yrittänyt askelmaa {stepIdx + 1} viidesti. Tuntuuko hän valmiilta askelmaan {stepIdx + 2}?
+              </p>
+              <p className="text-[11px] italic text-emerald-800/70 mb-3">
+                Ei pakkoa siirtyä — voitte jatkaa samalla askelmalla niin kauan kuin tuntuu hyvältä. Lisätoistot kasvattavat varmuutta.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (confirm(`Siirrytäänkö askelmaan ${stepIdx + 2}?`)) onAdvanceLadder();
+                  }}
+                  className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white"
+                >
+                  Kyllä, siirry
+                </button>
+                <button
+                  onClick={() => {/* Ei tee mitään, pysytään samalla askelmalla */}}
+                  className="flex-1 rounded-lg bg-white border border-emerald-300 px-3 py-2 text-sm text-emerald-800"
+                >
+                  Ei vielä
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Viimeinen askelma suoritettu */}
+          {readyToAdvance && isLastStep && (
+            <div className="rounded-xl bg-amber-50 border-2 border-amber-400 p-3">
+              <div className="font-display text-sm text-amber-900 mb-1">🏆 Portaikko valmis!</div>
+              <p className="text-xs leading-snug text-amber-950 mb-2">
+                {player.name} on käynyt läpi koko «{template.title}» -portaikon. Tämä on iso saavutus — viikkoja sinnikkyyttä ja rohkeutta.
+              </p>
+              <p className="text-xs leading-snug text-amber-950 mb-3">
+                Voit halutessasi juhlia tätä konkreettisesti. Sopikaa hänen kanssaan sopiva palkkio — esim. padiaikaa, yhteinen retki tai lapsen valitsema ohjelma.
+              </p>
+              <button
+                onClick={() => {
+                  if (confirm(`Päättääkö portaikko «${template.title}»? Voitte aloittaa myöhemmin uuden.`)) onAdvanceLadder();
+                }}
+                className="w-full rounded-lg bg-amber-600 px-3 py-2 text-sm font-bold text-white"
+              >
+                Olen juhlinut tätä — päätä portaikko
+              </button>
+            </div>
+          )}
+
+          {/* Lempeä muistutus kun toistoja on paljon eikä ole siirrytty */}
+          {manyReps && !readyToAdvance && (
+            <div className="rounded-xl bg-amber-100 border border-amber-300 p-3">
+              <p className="text-xs leading-snug text-amber-900">
+                💡 {player.name} on harjoitellut tätä askelmaa jo {currentReps} kertaa. Voitte halutessanne siirtyä seuraavaan askelmaan, mutta ei ole pakko — lisätoistot kasvattavat varmuutta.
+              </p>
+            </div>
+          )}
+          {manyReps && readyToAdvance && (
+            <div className="rounded-xl bg-amber-100 border border-amber-300 p-3 -mt-2">
+              <p className="text-[11px] italic leading-snug text-amber-800">
+                Toistoja on jo {currentReps}. Jos askelma alkaa tuntua tylsältä, on hyvä hetki siirtyä eteenpäin.
+              </p>
+            </div>
+          )}
+
+          {/* Vinkki kun portaikko aloitetaan */}
+          {currentReps === 0 && stepIdx === 0 && (
+            <div className="rounded-xl bg-amber-100/60 p-3 text-xs leading-relaxed text-amber-900">
+              <strong className="font-display">💡 Vinkki:</strong> Sopikaa {player.name}n kanssa <strong>etukäteen</strong> palkkio koko portaikon suorittamisesta. Materiaalin mukaan palkkio annetaan yrittämisestä, vaikka kaikki askelmat eivät menisi täydellisesti.
+            </div>
+          )}
+
+          {/* Säädä portaikkoa -valikko */}
+          <button
+            onClick={() => setShowResetMenu(!showResetMenu)}
+            className="w-full text-xs text-violet-700 underline mt-2"
+          >
+            {showResetMenu ? "Sulje" : "Säädä portaikkoa"} ⚙️
+          </button>
+
+          {showResetMenu && (
+            <div className="rounded-xl bg-white border border-violet-200 p-3 space-y-2 animate-pop">
+              <p className="text-[11px] italic text-violet-800/70 leading-snug mb-2">
+                Materiaalin mukaan takapakeista ei lannistuta. Voit tehdä portaikkoon säätöjä, jos lapsen tilanne sitä vaatii.
+              </p>
+
+              {/* Taaksepäin */}
+              {canGoBack && (
+                <button
+                  onClick={() => {
+                    if (confirm(`Siirrytäänkö takaisin askelmaan ${stepIdx}? Toistot säilyvät. Kerro tämä lapselle ystävällisesti — ei rangaistuksena vaan rauhallisena valintana.`)) {
+                      onGoBackLadder();
+                      setShowResetMenu(false);
+                    }
+                  }}
+                  className="w-full rounded-lg bg-white border border-violet-300 p-3 text-left active:bg-violet-50"
+                >
+                  <div className="font-display text-sm text-violet-900">← Takaisin askelmaan {stepIdx}</div>
+                  <div className="text-[11px] text-violet-800/70 leading-snug mt-0.5">Jos nykyinen askelma tuntuu liian vaikealta. Toistot säilyvät, ei aloiteta alusta.</div>
+                </button>
+              )}
+
+              {/* Nollaa nykyisen askelman toistot */}
+              {currentReps > 0 && (
+                <button
+                  onClick={() => {
+                    if (confirm(`Nollataanko askelman ${stepIdx + 1} toistot? Toistolaskuri menee nollaan, mutta askelma pysyy samana.`)) {
+                      onResetStepReps();
+                      setShowResetMenu(false);
+                    }
+                  }}
+                  className="w-full rounded-lg bg-white border border-violet-300 p-3 text-left active:bg-violet-50"
+                >
+                  <div className="font-display text-sm text-violet-900">🔄 Nollaa nykyisen askelman toistot</div>
+                  <div className="text-[11px] text-violet-800/70 leading-snug mt-0.5">Aloita nykyinen askelma puhtaalta pöydältä. Esim. pidemmän tauon jälkeen.</div>
+                </button>
+              )}
+
+              {/* Lopeta portaikko */}
+              <button
+                onClick={() => {
+                  if (confirm("Lopetetaanko koko portaikko? Edistyminen tallentuu mutta portaikko poistuu etusivulta. Voitte aloittaa uuden milloin haluatte.")) {
+                    onStopLadder();
+                    setShowResetMenu(false);
+                  }
+                }}
+                className="w-full rounded-lg bg-white border border-violet-300 p-3 text-left active:bg-violet-50"
+              >
+                <div className="font-display text-sm text-violet-900">🚪 Lopeta koko portaikko</div>
+                <div className="text-[11px] text-violet-800/70 leading-snug mt-0.5">Jos haluatte vaihtaa toiseen tai pitää tauon.</div>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Toggle({ label, desc, checked, onChange }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border-2 border-amber-200 bg-white p-4 shadow">
+      <div className="pr-3"><div className="font-display text-base text-amber-900">{label}</div>{desc && <div className="text-xs text-amber-800/70">{desc}</div>}</div>
+      <button onClick={() => onChange(!checked)} className={`relative h-7 w-12 rounded-full transition ${checked ? "bg-orange-500" : "bg-amber-200"}`}>
+        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${checked ? "left-6" : "left-1"}`} />
+      </button>
+    </div>
+  );
+}
+
+function NumberRow({ label, value, onChange, step = 1 }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border-2 border-amber-200 bg-white p-4 shadow">
+      <div className="font-display text-sm text-amber-900">{label}</div>
+      <div className="flex items-center gap-2">
+        <button onClick={() => onChange(Math.max(0, value - step))} className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-800 text-xl font-bold">−</button>
+        <span className="font-display w-10 text-center text-xl text-amber-900">{value}</span>
+        <button onClick={() => onChange(value + step)} className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-white text-xl font-bold">+</button>
+      </div>
+    </div>
+  );
+}
+
+// PadiBank — padiaikasaldon laskuri ja vähennys. Vain vanhemman näkymässä.
+function PadiBank({ balance, playerName, onUse }) {
+  const [custom, setCustom] = useState(15);
+  const quickAmounts = [15, 30, 60];
+  return (
+    <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4 shadow">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-lg">🏦</span>
+        <div className="font-display text-base text-emerald-900">Padiaikapankki</div>
+      </div>
+      <p className="text-[11px] text-emerald-800/70 mb-3">Kertynyt padiaika. Vähennä saldoa kun {playerName} on käyttänyt sitä.</p>
+
+      <div className="rounded-xl bg-white border border-emerald-200 p-4 text-center mb-3">
+        <div className="text-[10px] uppercase tracking-wider text-emerald-700/70 font-bold">Saldo nyt</div>
+        <div className="flex items-baseline justify-center gap-1">
+          <span className="font-display text-4xl text-emerald-700">{balance}</span>
+          <span className="font-display text-base text-emerald-900">min</span>
+        </div>
+      </div>
+
+      {balance > 0 ? (
+        <>
+          <div className="text-xs font-bold text-emerald-800/80 mb-2">Vähennä käytetty aika:</div>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {quickAmounts.map(a => (
+              <button
+                key={a}
+                onClick={() => onUse(Math.min(a, balance))}
+                className="rounded-lg bg-white border border-emerald-300 px-2 py-2 text-sm font-bold text-emerald-800 active:bg-emerald-100"
+              >
+                −{a} min
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 flex-1">
+              <button onClick={() => setCustom(Math.max(5, custom - 5))} className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 font-bold">−</button>
+              <span className="font-display w-12 text-center text-emerald-900">{custom}</span>
+              <button onClick={() => setCustom(custom + 5)} className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-200 text-emerald-800 font-bold">+</button>
+            </div>
+            <button
+              onClick={() => onUse(Math.min(custom, balance))}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white"
+            >
+              Vähennä
+            </button>
+          </div>
+          <button
+            onClick={() => { if (confirm("Nollataanko koko padiaikasaldo?")) onUse(balance); }}
+            className="w-full mt-2 text-[11px] text-emerald-700/70 underline"
+          >
+            Nollaa koko saldo
+          </button>
+        </>
+      ) : (
+        <p className="text-xs italic text-emerald-800/70 text-center">Ei käyttämätöntä padiaikaa juuri nyt.</p>
+      )}
+    </div>
+  );
+}
+
+function AchievementsScreen({ history, onBack }) {
+  const unlocked = getUnlockedAchievements(history);
+  const unlockedIds = new Set(unlocked.map(a => a.id));
+  return (
+    <div className="animate-pop">
+      <button onClick={onBack} className="mb-4 flex items-center gap-1 text-sm font-bold text-amber-800">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Takaisin
+      </button>
+      <h2 className="font-display mb-1 text-3xl text-amber-900">Saavutukset</h2>
+      <p className="mb-5 text-sm text-amber-800/70">Olet avannut {unlocked.length} / {ACHIEVEMENTS.length}.</p>
+      <div className="space-y-3">
+        {ACHIEVEMENTS.map(a => {
+          const isUnlocked = unlockedIds.has(a.id);
+          return (
+            <div key={a.id} className={`flex items-start gap-3 rounded-2xl border-2 p-4 shadow ${isUnlocked ? "border-violet-300 bg-violet-50" : "border-amber-100 bg-white/40 opacity-50"}`}>
+              <div className="text-3xl">{isUnlocked ? a.emoji : "🔒"}</div>
+              <div className="flex-1">
+                <div className={`font-display text-base ${isUnlocked ? "text-violet-950" : "text-amber-900/60"}`}>
+                  {isUnlocked ? a.title : "Avautuu kun aika on oikea"}
+                </div>
+                {isUnlocked && <div className="text-sm text-violet-900/80 mt-0.5">{a.sub}</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WeekView({ player, theme, onBack }) {
+  const history = player.history || [];
+  const last7 = history.filter((h) => Date.now() - new Date(h.date).getTime() < 7 * 24 * 60 * 60 * 1000);
+  const last14 = history.filter((h) => Date.now() - new Date(h.date).getTime() < 14 * 24 * 60 * 60 * 1000);
+  const continuedCount = last7.filter((h) => h.continuedAfterMistake === "yes").length;
+  const kinds = last7.reduce((acc, h) => { if (h.bravestKind) acc[h.bravestKind] = (acc[h.bravestKind] || 0) + 1; return acc; }, {});
+  const topKind = Object.entries(kinds).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const kindNames = {
+    steal: { name: "pallonriistoissa", emoji: "🛡️" }, trick: { name: "harhautuksissa", emoji: "🌀" },
+    run: { name: "kuljetuksissa", emoji: "⚡" }, scared: { name: "tilanteisiin menemisessä", emoji: "🦁" },
+    again: { name: "virheen jälkeen jatkamisessa", emoji: "🔁" }, fail: { name: "mokien sietämisessä", emoji: "😅" },
+    newthing: { name: "uuden kokeilemisessa", emoji: "🌱" },
+  };
+  const topInfo = topKind ? kindNames[topKind] : null;
+
+  // Ahdistusmittarin tilastot — viimeisen 14 päivän keskiarvot ja muutos
+  const last14WithAnxiety = last14.filter(h => h.prePracticeAnxiety !== null && h.prePracticeAnxiety !== undefined && h.postPracticeAnxiety !== null && h.postPracticeAnxiety !== undefined);
+  let anxietyStats = null;
+  if (last14WithAnxiety.length >= 3) {
+    const avgBefore = last14WithAnxiety.reduce((s,h) => s + h.prePracticeAnxiety, 0) / last14WithAnxiety.length;
+    const avgAfter = last14WithAnxiety.reduce((s,h) => s + h.postPracticeAnxiety, 0) / last14WithAnxiety.length;
+    const declines = last14WithAnxiety.filter(h => h.postPracticeAnxiety < h.prePracticeAnxiety).length;
+    anxietyStats = {
+      count: last14WithAnxiety.length,
+      avgBefore: avgBefore.toFixed(1),
+      avgAfter: avgAfter.toFixed(1),
+      decline: (avgBefore - avgAfter).toFixed(1),
+      declinesCount: declines,
+    };
+  }
+
+  // 14 päivän koonti — näkyy vain vanhemmalle, vain jos riittävästi kirjauksia
+  const last14Brave = last14.filter(h => h.bravestMoment).length;
+  const last14Continued = last14.filter(h => h.continuedAfterMistake === "yes").length;
+  let twoWeekSummary = null;
+  if (last14Brave >= 6) {
+    // Valitse 2 ehdotusta vaihteleen päivän perusteella, etteivät aina samat
+    const ideas = [
+      "Tehkää yhdessä lemppariruoka",
+      "Lähtekää yhdessä uimaan tai puistoon",
+      "Katsokaa yhdessä elokuva, jonka lapsi valitsee",
+      "Antakaa lapsen päättää illan ohjelma",
+      "Kutsukaa kaveri kylään tai mennään hänen luokseen",
+      "Tehkää retki paikkaan jossa ette ole käyneet",
+      "Pelatkaa yhdessä lautapeliä tai pihapeliä",
+      "Antakaa lapsen valita aamupala ja tehkää se yhdessä",
+    ];
+    const seed = Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 14));
+    const idea1 = ideas[seed % ideas.length];
+    const idea2 = ideas[(seed + 3) % ideas.length];
+    twoWeekSummary = {
+      brave: last14Brave,
+      continued: last14Continued,
+      ideas: [idea1, idea2],
+    };
+  }
+
+  let summary = null;
+  if (last7.length > 0) {
+    const moods = last7.map((h) => h.mood).filter(Boolean);
+    const nervousCount = moods.filter((m) => m === "😬" || m === "😤").length;
+    const positiveCount = moods.filter((m) => m === "😄" || m === "🦁").length;
+    let observation, suggestion;
+    if (continuedCount >= 3) observation = `${player.name} kertoi jatkaneensa virheen jälkeen ${continuedCount} kertaa. Tämä on viikon tärkein havainto.`;
+    else if (nervousCount >= 3 && positiveCount === 0) observation = "Viikko on ollut jännittävä. Pelaaja silti kirjasi rohkeita hetkiä — se itsessään on rohkeutta.";
+    else if (positiveCount >= 3) observation = "Viikko on tuntunut hyvältä. Hyvä hetki vahvistaa onnistumisten muistelua.";
+    else if (topInfo) observation = `Viikon aikana toistui erityisesti rohkeus ${topInfo.name}. Kannattaa huomata tämä.`;
+    else observation = "Viikolla on kirjautunut hetkiä. Jokainen kirjaus on jo askel.";
+    if (continuedCount >= 2) suggestion = `Sano ${player.name}lle viikon päätteeksi: «Huomasin että jatkoit useamman virheen jälkeen tällä viikolla. Se on rohkeuden ydin.»`;
+    else if (topInfo) suggestion = `Sano ${player.name}lle viikon päätteeksi: «Huomasin että ${topInfo.name} oli usein viikon rohkein hetki. Hieno juttu.»`;
+    else suggestion = `Sano ${player.name}lle viikon päätteeksi: «Hyvä että muistit kirjata. Se itsessään on jo iso juttu.»`;
+    summary = { observation, suggestion };
+  }
+
+  return (
+    <div className="animate-pop">
+      <button onClick={onBack} className="mb-4 flex items-center gap-1 text-sm font-bold text-amber-800">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Takaisin
+      </button>
+      <h2 className="font-display mb-1 text-3xl text-amber-900">{player.name} — Viikon rohkeus</h2>
+      <p className="mb-5 text-sm text-amber-800/70">Vain havainnot — ei vertailua, ei tavoitteita.</p>
+      {summary && (
+        <div className="mb-5 rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-xl">
+          <div className="mb-2 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-amber-800">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            Vanhemmalle — viikon koonti
+          </div>
+          <p className="font-display text-base leading-snug text-amber-950">{summary.observation}</p>
+          <div className="mt-3 rounded-xl bg-amber-50 p-3">
+            <p className="font-display text-sm leading-snug text-amber-950">💡 <strong>{summary.suggestion}</strong></p>
+          </div>
+        </div>
+      )}
+
+      {/* 14 päivän koonti — näkyy vain vanhemmalle, ehdottaa yhteistä aikaa */}
+      {twoWeekSummary && (
+        <div className="mb-5 rounded-2xl border-[3px] border-violet-400 bg-gradient-to-br from-violet-50 to-pink-50 p-5 shadow-xl">
+          <div className="mb-2 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-violet-800">
+            <span className="text-base">🧡</span>
+            <span>Vanhemmalle — kahden viikon havainto</span>
+          </div>
+          <p className="font-display text-base leading-snug text-violet-950">
+            {player.name} on kirjannut <strong>{twoWeekSummary.brave} rohkeaa hetkeä</strong> viimeisten 14 päivän aikana.
+            {twoWeekSummary.continued >= 2 && <> Hän on jatkanut virheen jälkeen <strong>{twoWeekSummary.continued} kertaa</strong>.</>}
+          </p>
+          <p className="font-display text-sm leading-snug text-violet-900 mt-2">
+            Tämä on iso asia. Olisi hyvä juhlistaa yhdessä — ei palkintona vaan yhteisenä hetkenä:
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {twoWeekSummary.ideas.map((idea, i) => (
+              <li key={i} className="font-display text-sm leading-snug text-violet-950 flex items-start gap-2">
+                <span className="text-violet-500 mt-0.5">•</span>
+                <span>{idea}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 rounded-xl bg-white/70 p-3">
+            <p className="font-display text-sm leading-snug text-violet-950">
+              💡 <strong>Sano sitä tehdessä:</strong> «Huomasin että olet uskaltanut paljon viime aikoina. Halusin että vietämme aikaa yhdessä siksi.»
+            </p>
+          </div>
+        </div>
+      )}
+      {/* Ahdistusmittarin koonti — vanhemmalle, jos riittävästi kirjauksia */}
+      {anxietyStats && (
+        <div className="mb-5 rounded-2xl border-2 border-sky-300 bg-sky-50 p-5 shadow">
+          <div className="mb-2 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-sky-800">
+            <span>📊</span>
+            <span>Vanhemmalle — jännityksen kehitys</span>
+          </div>
+          <p className="font-display text-sm leading-snug text-sky-950 mb-3">
+            {player.name} on käyttänyt rohkeusmittaria <strong>{anxietyStats.count} kertaa</strong> viimeisen 14 päivän aikana.
+          </p>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="rounded-xl bg-white p-3 text-center border border-sky-200">
+              <div className="text-[10px] uppercase tracking-wider text-sky-700/70 font-bold">Ennen, keskim.</div>
+              <div className="font-display text-2xl text-sky-900">{anxietyStats.avgBefore}</div>
+            </div>
+            <div className="rounded-xl bg-white p-3 text-center border border-sky-200">
+              <div className="text-[10px] uppercase tracking-wider text-sky-700/70 font-bold">Jälkeen, keskim.</div>
+              <div className="font-display text-2xl text-sky-900">{anxietyStats.avgAfter}</div>
+            </div>
+          </div>
+          <p className="text-sm text-sky-950 leading-snug">
+            {anxietyStats.decline > 0.5 ? (
+              <>Jännitys on laskenut keskimäärin <strong>{anxietyStats.decline} pykälää</strong> tilanteen aikana. {anxietyStats.declinesCount} kertaa {anxietyStats.count}:stä tunne laski. Tämä on tärkeä oivallus lapselle: jännitys laskee aina ennen pitkää.</>
+            ) : (
+              <>Tilanteet ovat tuntuneet melko samalta ennen ja jälkeen. Tämä on ihan ok — joskus mittari paljastaa että jännitys ei laskenutkaan, ja sekin tieto on arvokas. Voi olla hyvä keskustella mistä se johtuu.</>
+            )}
+          </p>
+        </div>
+      )}
+
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <Stat label="Treeniä kirjattu" value={last7.length} />
+        <Stat label="Jatkoi virheen jälkeen" value={continuedCount} />
+      </div>
+      {topInfo && (
+        <div className={`mb-4 rounded-2xl bg-gradient-to-br ${theme.gradient} p-5 text-white shadow-xl`}>
+          <div className="text-xs font-bold uppercase tracking-wider opacity-90">Tällä viikolla</div>
+          <p className="font-display mt-1 text-xl leading-snug">Rohkeus kasvoi erityisesti {topInfo.name} {topInfo.emoji}</p>
+        </div>
+      )}
+      {last7.length > 0 && (
+        <div className="rounded-2xl border-2 border-amber-200 bg-white p-4 shadow">
+          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-700">Viikon hetket</div>
+          <div className="space-y-2">
+            {last7.slice(-7).reverse().map((h, i) => (
+              <div key={i} className="flex items-start gap-3 border-t border-amber-100 pt-2 first:border-0 first:pt-0">
+                <div className="text-2xl">{h.title.split(" ")[0]}</div>
+                <div className="flex-1">
+                  <div className="font-display text-sm text-amber-900">{h.bravestMoment || "—"}</div>
+                  <div className="text-xs text-amber-700/70">{new Date(h.date).toLocaleDateString("fi-FI", { weekday: "long" })}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {last7.length === 0 && (
+        <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-white/60 p-6 text-center text-amber-800">
+          <div className="mb-2 text-4xl">🦁</div>
+          Ei kirjauksia vielä. Ei kiirettä — täytä, kun siltä tuntuu.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="rounded-2xl border-2 border-amber-200 bg-white p-4 text-center shadow">
+      <div className="font-display text-4xl text-amber-900">{value}</div>
+      <div className="text-xs font-bold uppercase tracking-wider text-amber-700">{label}</div>
+    </div>
+  );
+}
+
+function OptionButton({ selected, anySelected, onClick, children, theme }) {
+  const selectedBorder = (theme && theme.selectedBorder) || "border-orange-500";
+  const selectedBg = (theme && theme.selectedBg) || "bg-orange-50";
+  const selectedRing = (theme && theme.selectedRing) || "ring-orange-200";
+
+  let cls = "flex w-full items-center gap-3 rounded-2xl border-2 p-4 text-left transition-all duration-300 ";
+  if (selected) cls += `${selectedBorder} ${selectedBg} shadow-xl ring-4 ${selectedRing}`;
+  else if (anySelected) cls += "border-amber-100 bg-white/40 opacity-40";
+  else cls += "border-amber-200 bg-white shadow";
+  return <button onClick={onClick} className={cls}>{children}</button>;
+}
+
+function StepNav({ onBack, onSkip, step, total }) {
+  return (
+    <div className="mb-4 flex items-center justify-between">
+      <button onClick={onBack} className="flex items-center gap-1 rounded-full bg-white/70 px-3 py-1.5 text-sm font-bold text-amber-800 shadow" aria-label="Edellinen">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Edellinen
+      </button>
+      {step && total && <div className="text-xs font-bold uppercase tracking-wider text-amber-700/70">{step} / {total}</div>}
+      {onSkip && <button onClick={onSkip} className="rounded-full bg-white/70 px-3 py-1.5 text-sm font-bold text-amber-800 shadow">Ohita →</button>}
+    </div>
+  );
+}
+
+function EncourageBox({ reply }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) {
+      const t = setTimeout(() => { ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 200);
+      return () => clearTimeout(t);
+    }
+  }, [reply?.text]);
+  if (!reply) return null;
+  const style = TONE_STYLES[reply.tone] || TONE_STYLES.amber;
+  const parts = reply.text.split(reply.highlight);
+  return (
+    <div ref={ref} className="animate-pop-big mt-6 relative">
+      <div className="absolute -left-2 -top-3 z-10 flex h-12 w-12 items-center justify-center rounded-full border-[3px] border-white bg-white text-3xl shadow-xl animate-wiggle">{reply.icon}</div>
+      <div className={`rounded-2xl border-[3px] p-5 pl-12 shadow-xl ${style.box}`}>
+        <p className="font-display text-lg leading-snug">
+          {parts[0]}
+          <strong className={`rounded-md px-1.5 py-0.5 ${style.hl}`}>{reply.highlight}</strong>
+          {parts[1]}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BigButton({ children, onClick, disabled, theme }) {
+  const buttonGradient = (theme && theme.button) || "from-orange-500 to-rose-500";
+  return (
+    <button onClick={onClick} disabled={disabled}
+      className={`w-full rounded-2xl px-6 py-5 font-display text-xl text-white shadow-xl transition ${disabled ? "cursor-not-allowed bg-amber-200 text-amber-500" : `bg-gradient-to-br ${buttonGradient}`}`}>
+      {children}
+    </button>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<Rohkeusliiga />);
+</script>
+</body>
+</html>
